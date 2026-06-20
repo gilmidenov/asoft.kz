@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,11 +16,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Создаём администратора
+        User::create([
+            'name'     => 'Администратор',
+            'email'    => 'admin@asoft.kz',
+            // Hash::make() — хешируем пароль. Никогда не храним пароли в открытом виде!
+            'password' => Hash::make('admin123'),
+            'role'     => 'admin',
+        ]);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Вызываем остальные seeders по порядку (важен порядок из-за внешних ключей)
+        $this->call([
+            CategorySeeder::class,
+            VendorSeeder::class,
+            ProductSeeder::class,
         ]);
     }
 }
