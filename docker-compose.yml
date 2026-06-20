@@ -1,0 +1,174 @@
+# ============================================================
+# docker-compose.yml — описывает все сервисы приложения
+# ============================================================
+# Docker Compose позволяет запустить несколько контейнеров
+# одной командой: docker compose up -d
+#
+# Наше приложение состоит из 4 сервисов:
+#
+#   app      — PHP-FPM (Laravel backend)
+#   nginx    — веб-сервер (принимает HTTP, отдаёт статику, проксирует PHP)
+#   postgres — база данных PostgreSQL
+#   node     — Node.js (сборщик Vite / Vue.js frontend)
+
+services:
+
+  # ===========================================================
+  # Сервис: app (PHP-FPM + Laravel)
+  # ===========================================================
+  app:
+    # build: context — папка, откуда читается Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: asoft_app
+
+    # restart: unless-stopped — перезапускать контейнер
+    # при сбое или перезагрузке системы,
+    # но НЕ если мы сами остановили его командой docker compose stop
+    restart: unless-stopped
+
+    working_dir: /var/www
+
+    # volumes — монтируем папку проекта внутрь контейнера
+    # .:var/www — текущая папка (.) монтируется как /var/www внутри контейнера
+    # Любое изменение файлов снаружи сразу видно внутри!
+    # Это ключевое для разработки: не нужно пересобирать образ после каждого изменения кода
+    volumes:
+      - .:/var/www
+      # Монтируем наши PHP-настройки
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+
+    # networks — в какой сети находится контейнер
+    # Контейнеры в одной сети могут обращаться друг к другу по имени сервиса
+    # Например: app обращается к postgres как postgres:5432
+    networks:
+      - asoft_network
+
+    # depends_on — этот сервис запускается ПОСЛЕ указанных
+    depends_on:
+      - postgres
+
+    # Переменные окружения внутри контейнера
+    environment:
+      PHP_IDE_CONFIG: "serverName=asoft"
+
+  # ===========================================================
+  # Сервис: nginx (веб-сервер)
+  # ===========================================================
+  nginx:
+    # image: — используем готовый официальный образ, не собираем свой
+    # nginx:alpine — легковесный Nginx на Alpine Linux (~5 МБ vs ~180 МБ)
+    image: nginx:alpine
+    container_name: asoft_nginx
+    restart: unless-stopped
+
+    # ports: "хост:контейнер"
+    # "8000:80" — порт 8000 на твоём компьютере → порт 80 внутри контейнера
+    # Открываешь браузер: http://localhost:8000 → попадаешь в Nginx
+    ports:
+      - "8000:80"
+
+    volumes:
+      # Код приложения (для отдачи статических файлов из public/)
+      - .:/var/www
+      # Наш конфиг Nginx
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      # Логи Nginx (можно читать снаружи)
+      - ./docker/nginx/logs:/var/log/nginx
+
+    networks:
+      - asoft_network
+
+    depends_on:
+      - app
+
+  # ===========================================================
+  # Сервис: postgres (база данных)
+  # ===========================================================
+  postgres:
+    # postgres:16-alpine — PostgreSQL версии 16 на Alpine Linux
+    image: postgres:16-alpine
+    container_name: asoft_postgres
+    restart: unless-stopped
+
+    # Переменные окружения настраивают PostgreSQL при первом запуске
+    environment:
+      POSTGRES_DB: asoft_kz           # Имя базы данных (создаётся автоматически)
+      POSTGRES_USER: asoft_user        # Пользователь
+      POSTGRES_PASSWORD: secret_password  # Пароль
+      PGDATA: /var/lib/postgresql/data/pgdata  # Папка с данными внутри контейнера
+
+    # ports — пробрасываем PostgreSQL наружу
+    # Это нужно для подключения через pgAdmin или TablePlus с твоего компьютера
+    # В продакшене этот порт НЕ надо выставлять наружу!
+    ports:
+      - "5432:5432"
+
+    # volumes — Named Volume для данных PostgreSQL
+    # postgres_data — именованный том (управляется Docker'ом, не просто папка)
+    # Данные сохраняются между перезапусками контейнера
+    # Если удалишь tom: docker volume rm asoft_postgres_data — данные удалятся
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - asoft_network
+
+    # healthcheck — Docker проверяет что PostgreSQL готов принимать подключения
+    # pg_isready — утилита PostgreSQL для проверки готовности
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asoft_user -d asoft_kz"]
+      interval: 10s   # Проверять каждые 10 секунд
+      timeout: 5s     # Ждать ответа 5 секунд
+      retries: 5      # Попыток до отметки "нездоров"
+
+  # ===========================================================
+  # Сервис: node (Vite + Vue.js)
+  # ===========================================================
+  node:
+    # node:20-alpine — Node.js LTS на Alpine Linux
+    image: node:20-alpine
+    container_name: asoft_node
+    working_dir: /var/www
+
+    volumes:
+      - .:/var/www
+      # Анонимный том для node_modules — без этого npm install будет очень медленным
+      # на Windows из-за NTFS ↔ Linux filesystem mapping
+      - /var/www/node_modules
+
+    # ports — пробрасываем порт Vite dev server
+    ports:
+      - "5173:5173"
+
+    # command — команда запуска контейнера
+    # sh -c "..." — запускаем через shell чтобы использовать &&
+    # npm install — устанавливаем зависимости (если node_modules нет)
+    # npm run dev — запускаем Vite dev server
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    # --host 0.0.0.0 — важно! Без этого Vite слушает только 127.0.0.1
+    # внутри контейнера, и снаружи не достучаться
+
+    networks:
+      - asoft_network
+
+# ===========================================================
+# Networks (сети)
+# ===========================================================
+networks:
+  asoft_network:
+    # bridge — стандартный тип сети.
+    # Создаёт виртуальный коммутатор, все контейнеры в сети
+    # могут общаться друг с другом по именам сервисов
+    driver: bridge
+
+# ===========================================================
+# Volumes (тома)
+# ===========================================================
+volumes:
+  # postgres_data — именованный том для данных PostgreSQL
+  # Docker хранит его в /var/lib/docker/volumes/
+  # Данные живут дольше контейнера — удалишь контейнер, данные останутся
+  postgres_data:
+    driver: local
