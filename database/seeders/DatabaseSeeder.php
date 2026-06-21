@@ -16,14 +16,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Создаём администратора
-        User::create([
-            'name'     => 'Администратор',
-            'email'    => 'admin@asoft.kz',
-            // Hash::make() — хешируем пароль. Никогда не храним пароли в открытом виде!
-            'password' => Hash::make('admin123'),
-            'role'     => 'admin',
-        ]);
+        User::firstOrCreate(
+            ['email' => 'admin@asoft.kz'],
+            [
+                'name'     => 'Администратор',
+                'password' => Hash::make('admin123'),
+                'role'     => 'admin',
+            ]
+        );
 
         // Вызываем остальные seeders по порядку (важен порядок из-за внешних ключей)
         $this->call([

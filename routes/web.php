@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Все запросы (кроме /api/*) отдают app.blade.php
+// Vue Router сам определяет что показать по URL
+Route::get('/{any}', function () {
+    return view('app');
+})->where('any', '.*');
