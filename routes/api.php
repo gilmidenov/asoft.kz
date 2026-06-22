@@ -67,6 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::apiResource('categories', CategoryController::class)->except(['index', 'show']);
         Route::apiResource('vendors', VendorController::class)->except(['index', 'show']);
+        Route::get('products', [ProductController::class, 'adminIndex']);
         Route::apiResource('products', ProductController::class)->except(['index', 'show']);
         Route::get('/orders', [OrderController::class, 'adminIndex']);
         Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);

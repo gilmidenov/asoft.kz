@@ -61,6 +61,26 @@ class ProductController extends Controller
         return response()->json($products);
     }
 
+    public function adminIndex(Request $request): JsonResponse
+    {
+        $query = Product::with(['category', 'vendor'])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('search')) {
+            $op      = DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+            $pattern = '%' . $request->search . '%';
+            $query->where('name', $op, $pattern);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $products = $query->paginate($request->input('per_page', 20));
+
+        return response()->json($products);
+    }
+
     public function show(string $slug): JsonResponse
     {
         $product = Product::with(['category', 'vendor', 'licenses', 'images'])
@@ -86,6 +106,8 @@ class ProductController extends Controller
             'is_hit'            => 'boolean',
             'is_new'            => 'boolean',
             'is_sale'           => 'boolean',
+            'price_from'        => 'nullable|numeric|min:0',
+            'stock_quantity'    => 'nullable|integer|min:0',
         ]);
 
         $data['slug'] = Str::slug($data['name']);
@@ -105,10 +127,19 @@ class ProductController extends Controller
             'vendor_id'         => 'nullable|exists:vendors,id',
             'short_description' => 'nullable|string',
             'description'       => 'nullable|string',
-            'status'            => 'in:active,inactive,out_of_stock',
+            'version'           => 'nullable|string|max:50',
+            'language'          => 'nullable|string|max:100',
+            'delivery_type'     => 'sometimes|in:download,box,key',
+            'status'            => 'sometimes|in:active,inactive,out_of_stock',
+            'is_hit'            => 'sometimes|boolean',
+            'is_new'            => 'sometimes|boolean',
+            'is_sale'           => 'sometimes|boolean',
+            'price_from'        => 'nullable|numeric|min:0',
+            'stock_quantity'    => 'nullable|integer|min:0',
         ]);
 
         $product->update($data);
+        $product->refresh();
 
         return response()->json($product);
     }

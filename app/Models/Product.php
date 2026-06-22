@@ -14,6 +14,7 @@ class Product extends Model
         'delivery_type', 'main_image', 'price_from', 'status',
         'is_hit', 'is_new', 'is_sale',
         'meta_title', 'meta_description', 'meta_keywords', 'views_count',
+        'stock_quantity',
     ];
 
     protected $casts = [
@@ -21,7 +22,8 @@ class Product extends Model
         'is_hit'      => 'boolean',
         'is_new'      => 'boolean',
         'is_sale'     => 'boolean',
-        'views_count' => 'integer',
+        'views_count'    => 'integer',
+        'stock_quantity' => 'integer',
     ];
 
     public function category(): BelongsTo

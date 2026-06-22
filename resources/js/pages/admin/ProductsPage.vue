@@ -17,6 +17,7 @@ const emptyForm = () => ({
     name: '', category_id: '', vendor_id: '', short_description: '',
     description: '', version: '', language: '', delivery_type: 'key',
     status: 'active', is_hit: false, is_new: false, is_sale: false,
+    stock_quantity: '',
 })
 
 const form = ref(emptyForm())
@@ -28,7 +29,7 @@ const statusLabels   = { active: { label: 'Активен', color: 'text-green-6
 async function load() {
     loading.value = true
     try {
-        const { data } = await axios.get('/products', { params: { page: page.value, per_page: 20 } })
+        const { data } = await axios.get('/admin/products', { params: { page: page.value, per_page: 20 } })
         products.value  = data.data
         pagination.value = data
     } finally {
@@ -67,6 +68,7 @@ function openEdit(product) {
         is_hit:            !!product.is_hit,
         is_new:            !!product.is_new,
         is_sale:           !!product.is_sale,
+        stock_quantity:    product.stock_quantity ?? '',
     }
     errors.value    = {}
     showModal.value = true
@@ -115,6 +117,7 @@ async function remove(id) {
                         <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Категория</th>
                         <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Вендор</th>
                         <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Статус</th>
+                        <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Кол-во</th>
                         <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Метки</th>
                         <th class="px-6 py-3"></th>
                     </tr>
@@ -128,6 +131,10 @@ async function remove(id) {
                             <span :class="statusLabels[p.status]?.color" class="font-medium text-xs">
                                 {{ statusLabels[p.status]?.label }}
                             </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-center">
+                            <span v-if="p.stock_quantity !== null" class="font-medium">{{ p.stock_quantity }}</span>
+                            <span v-else class="text-muted">—</span>
                         </td>
                         <td class="px-6 py-4">
                             <span v-if="p.is_hit"  class="inline-block bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded mr-1">Хит</span>
@@ -206,13 +213,21 @@ async function remove(id) {
                             </select>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-dark mb-1">Статус</label>
-                        <select v-model="form.status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
-                            <option value="active">Активен</option>
-                            <option value="inactive">Неактивен</option>
-                            <option value="out_of_stock">Нет в наличии</option>
-                        </select>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-dark mb-1">Статус</label>
+                            <select v-model="form.status" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                                <option value="active">Активен</option>
+                                <option value="inactive">Неактивен</option>
+                                <option value="out_of_stock">Нет в наличии</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-dark mb-1">Количество на складе</label>
+                            <input v-model.number="form.stock_quantity" type="number" min="0" placeholder="Не ограничено"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+                            <p v-if="errors.stock_quantity" class="text-red-500 text-xs mt-1">{{ errors.stock_quantity[0] }}</p>
+                        </div>
                     </div>
                     <div class="flex gap-6">
                         <label class="flex items-center gap-2 cursor-pointer text-sm">
