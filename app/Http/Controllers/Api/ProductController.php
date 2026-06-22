@@ -7,6 +7,7 @@ use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
@@ -144,9 +145,46 @@ class ProductController extends Controller
         return response()->json($product);
     }
 
+    public function uploadImage(Request $request, int $id): JsonResponse
+    {
+        $product = Product::findOrFail($id);
+
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:4096',
+        ]);
+
+        if ($product->main_image) {
+            Storage::disk('public')->delete($product->main_image);
+        }
+
+        $path = $request->file('image')->store('products', 'public');
+        $product->update(['main_image' => $path]);
+        $product->refresh();
+
+        return response()->json($product);
+    }
+
+    public function deleteImage(int $id): JsonResponse
+    {
+        $product = Product::findOrFail($id);
+
+        if ($product->main_image) {
+            Storage::disk('public')->delete($product->main_image);
+            $product->update(['main_image' => null]);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
     public function destroy(int $id): JsonResponse
     {
-        Product::findOrFail($id)->delete();
+        $product = Product::findOrFail($id);
+
+        if ($product->main_image) {
+            Storage::disk('public')->delete($product->main_image);
+        }
+
+        $product->delete();
         return response()->json(null, 204);
     }
 }

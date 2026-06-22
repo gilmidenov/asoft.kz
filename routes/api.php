@@ -68,6 +68,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('categories', CategoryController::class)->except(['index', 'show']);
         Route::apiResource('vendors', VendorController::class)->except(['index', 'show']);
         Route::get('products', [ProductController::class, 'adminIndex']);
+        Route::post('products/{id}/image', [ProductController::class, 'uploadImage']);
+        Route::delete('products/{id}/image', [ProductController::class, 'deleteImage']);
         Route::apiResource('products', ProductController::class)->except(['index', 'show']);
         Route::get('/orders', [OrderController::class, 'adminIndex']);
         Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
