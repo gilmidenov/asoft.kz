@@ -2,11 +2,11 @@
 
 ## Архитектура проекта
 
-**Backend**: Laravel 11 (PHP 8.4) — REST API  
+**Backend**: Laravel 13 (PHP 8.4-fpm) — REST API  
 **Frontend**: Vue 3 + Pinia + Vue Router + Tailwind CSS  
 **База данных**: PostgreSQL 16  
 **Аутентификация**: Laravel Sanctum (Bearer-токены)  
-**Инфраструктура**: Docker (nginx, php-fpm, postgres, node)
+**Инфраструктура**: Docker (nginx:alpine, php-fpm, postgres:16-alpine)
 
 ---
 
@@ -34,11 +34,15 @@
 
 | Метод | Route | Описание |
 |-------|-------|----------|
-| `index` | `GET /api/products` | Список товаров с фильтрами и пагинацией |
+| `index` | `GET /api/products` | Публичный список товаров (только `status=active`) с фильтрами и пагинацией |
+| `adminIndex` | `GET /api/admin/products` | Список всех товаров для admin (любой статус) |
 | `show` | `GET /api/products/{slug}` | Карточка товара. Увеличивает `views_count` |
 | `store` | `POST /api/admin/products` | Создание товара (admin) |
 | `update` | `PUT /api/admin/products/{id}` | Обновление товара (admin) |
-| `destroy` | `DELETE /api/admin/products/{id}` | Удаление товара (admin) |
+| `destroy` | `DELETE /api/admin/products/{id}` | Удаление товара + файл изображения (admin) |
+| `syncLicenses` | `POST /api/admin/products/{id}/licenses/sync` | Синхронизация лицензий (admin) |
+| `uploadImage` | `POST /api/admin/products/{id}/image` | Загрузка главного изображения (admin) |
+| `deleteImage` | `DELETE /api/admin/products/{id}/image` | Удаление главного изображения (admin) |
 
 **Параметры фильтрации** (`GET /api/products`):
 
@@ -55,6 +59,10 @@
 | `page` | number | Номер страницы |
 
 **Заметка по поиску**: Контроллер определяет драйвер БД через `DB::connection()->getDriverName()` и использует `ILIKE` для PostgreSQL (регистронезависимый Unicode) или `LIKE` для SQLite (тесты).
+
+**Синхронизация лицензий** (`syncLicenses`): удаляет все старые лицензии товара и создаёт новые из переданного массива. После синхронизации автоматически пересчитывает `price_from` как минимальную цену среди лицензий. Это поле используется каталогом для отображения «от X ₸».
+
+**Изображения**: хранятся в `storage/app/public/products/`. При загрузке старый файл удаляется. `main_image` в БД хранится как относительный путь (`products/filename.jpg`), но Eloquent accessor на модели `Product` преобразует его в полный URL (`https://asoft.kz/storage/products/filename.jpg`) — все API-ответы возвращают уже готовый URL.
 
 ---
 
@@ -128,16 +136,30 @@
 | Модель | Таблица | Ключевые поля |
 |--------|---------|---------------|
 | `User` | `users` | `name`, `email`, `password`, `phone`, `role` (`customer`/`admin`) |
-| `Product` | `products` | `name`, `slug`, `status`, `is_hit`, `is_new`, `is_sale`, `price_from`, `views_count` |
+| `Product` | `products` | `name`, `slug`, `status`, `is_hit`, `is_new`, `is_sale`, `price_from`, `stock_quantity`, `main_image`, `views_count` |
 | `Category` | `categories` | `name`, `slug`, `parent_id`, `is_active`, `sort_order` |
 | `Vendor` | `vendors` | `name`, `slug`, `is_active` |
-| `ProductLicense` | `product_licenses` | `product_id`, `name`, `price`, `type`, `devices`, `duration_months` |
+| `ProductLicense` | `product_licenses` | `product_id`, `name`, `price`, `old_price`, `type`, `devices`, `duration_months`, `in_stock`, `sort_order` |
+| `ProductImage` | `product_images` | `product_id`, `path`, `alt`, `sort_order` |
 | `CartItem` | `cart_items` | `user_id`, `session_id`, `product_id`, `product_license_id`, `quantity` |
 | `Order` | `orders` | `order_number`, `user_id`, `status`, `total`, `customer_*` |
 | `OrderItem` | `order_items` | `order_id`, `product_id`, `product_name`, `license_name`, `price`, `quantity` |
 | `Favorite` | `favorites` | `user_id`, `product_id` |
 
 **Важно**: `OrderItem` хранит копии `product_name` и `license_name` на момент покупки — это намеренно, чтобы изменение товара в будущем не меняло историю заказов.
+
+#### Accessor `mainImage` в модели `Product`
+
+```php
+protected function mainImage(): Attribute
+{
+    return Attribute::make(
+        get: fn($value) => $value ? Storage::disk('public')->url($value) : null,
+    );
+}
+```
+
+Преобразует относительный путь из БД в полный URL (`https://asoft.kz/storage/products/...`). Благодаря этому все клиенты API получают готовый URL без дополнительной обработки.
 
 ---
 
@@ -170,7 +192,7 @@ resources/js/
 │   └── admin/           # Административная панель
 │       ├── AdminLayout.vue    # Layout с сайдбаром
 │       ├── DashboardPage.vue  # Дашборд со статистикой
-│       ├── ProductsPage.vue   # CRUD товаров
+│       ├── ProductsPage.vue   # CRUD товаров с лицензиями и изображениями
 │       ├── CategoriesPage.vue # CRUD категорий
 │       ├── VendorsPage.vue    # CRUD вендоров
 │       └── OrdersPage.vue     # Управление заказами
@@ -241,6 +263,41 @@ axios.interceptors.request.use(config => {
 
 ---
 
+## Работа с товарами в админ-панели
+
+### Создание товара
+
+1. Откройте `/admin/products` → нажмите **«+ Добавить товар»**.
+2. Заполните обязательное поле **Название** и опциональные поля: категория, вендор, описание, версия, язык, тип доставки.
+3. Установите **Количество на складе** (пусто = неограничено).
+4. Установите **Статус**: Активен / Неактивен / Нет в наличии.
+5. Добавьте **лицензии** через кнопку «+ Добавить» в секции «Варианты лицензий»:
+   - Название (напр. «1 ПК бессрочно»)
+   - Цена (₸) — обязательно
+   - Старая цена — для отображения зачёркнутой цены
+   - Тип: Бессрочная / Подписка / Корпоративная
+   - Срок (мес.) — для подписок
+   - Устройства — «1», «3», «unlimited»
+   - Флаг «В наличии»
+6. Загрузите **изображение** через зону загрузки (JPG/PNG/WebP, до 4 МБ).
+7. Нажмите **«Сохранить»** — товар создаётся, лицензии синхронизируются, изображение загружается.
+
+После сохранения поле `price_from` автоматически становится равным минимальной цене среди лицензий. Именно это значение используется в каталоге («от X ₸»).
+
+### Редактирование товара
+
+Нажмите **«Изменить»** в строке таблицы. Форма откроется с текущими данными и всеми лицензиями. Логика сохранения аналогична созданию.
+
+### Удаление товара
+
+Нажмите **«Удалить»** — удаляются товар, все его лицензии и файл изображения.
+
+### Управление количеством
+
+Поле **«Количество на складе»** отражает физический остаток (для лицензионных ключей / коробочных версий). Пустое значение означает «неограничено». Текущее количество отображается в колонке **Кол-во** таблицы.
+
+---
+
 ## Тесты
 
 Тесты находятся в `tests/Feature/`. Запуск:
@@ -262,9 +319,41 @@ docker exec asoft_app php artisan test tests/Feature/AuthTest.php --testdox
 
 ---
 
+## Известные исправления и решения
+
+### OPcache: изменения PHP-файлов не применялись
+
+**Проблема**: в `docker/php/prod.ini` было `opcache.validate_timestamps = 0`. PHP никогда не перечитывал файлы с диска — все изменения в контроллерах молча игнорировались до перезапуска контейнера.
+
+**Решение**: изменено на `opcache.validate_timestamps = 1`. PHP теперь проверяет дату изменения файла и сбрасывает кэш при необходимости.
+
+### Изображения товаров возвращали 404
+
+**Проблема**: `main_image` хранился как `products/filename.jpg` и использовался напрямую как `src` в Vue-компонентах. Браузер запрашивал `/products/filename.jpg`, которого нет — файлы лежат в `/storage/products/`.
+
+**Решение**: Eloquent accessor `mainImage()` в модели `Product` преобразует путь в полный URL через `Storage::disk('public')->url($value)`. Все Vue-компоненты получают уже готовый `https://asoft.kz/storage/products/...` без изменений на стороне фронтенда.
+
+### Лицензии не отображались в таблице и форме редактирования
+
+**Проблема**: метод `adminIndex()` делал `->with(['category', 'vendor'])` без `'licenses'`. Vue получал объекты товаров без массива лицензий — таблица всегда показывала «Нет», форма открывалась пустой.
+
+**Решение**: добавлено `'licenses'` в eager loading: `->with(['category', 'vendor', 'licenses'])`.
+
+### Поле «Цена от» в форме товара было избыточным
+
+**Проблема**: администратор вводил `price_from` вручную, но это значение должно совпадать с минимальной ценой лицензии — дублирование с риском ошибки.
+
+**Решение**: поле удалено из формы. После синхронизации лицензий метод `syncLicenses()` автоматически обновляет `price_from`:
+```php
+$product->load('licenses');
+$minPrice = $product->licenses->min('price');
+$product->update(['price_from' => $minPrice]);
+```
+
+---
+
 ## Известные ограничения и точки роста
 
-- Загрузка изображений товаров: поле `main_image` и таблица `product_images` есть в БД, но интерфейс загрузки файлов не реализован (только URL).
 - Лицензионные ключи (`order_items.license_key`) хранятся в БД, но механизм их генерации/выдачи после оплаты не реализован.
 - Email-уведомления не настроены.
 - Платёжная интеграция отсутствует (статусы меняются вручную через admin-панель).

@@ -64,7 +64,7 @@ class ProductController extends Controller
 
     public function adminIndex(Request $request): JsonResponse
     {
-        $query = Product::with(['category', 'vendor'])
+        $query = Product::with(['category', 'vendor', 'licenses'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
@@ -176,6 +176,11 @@ class ProductController extends Controller
         }
 
         $product->load('licenses');
+
+        // Автоматически обновляем price_from по минимальной цене среди лицензий
+        $minPrice = $product->licenses->min('price');
+        $product->update(['price_from' => $minPrice]);
+
         return response()->json($product->licenses);
     }
 

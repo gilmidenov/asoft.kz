@@ -25,7 +25,7 @@ const emptyForm = () => ({
     name: '', category_id: '', vendor_id: '', short_description: '',
     description: '', version: '', language: '', delivery_type: 'key',
     status: 'active', is_hit: false, is_new: false, is_sale: false,
-    stock_quantity: '', price_from: '',
+    stock_quantity: '',
 })
 
 const emptyLicense = () => ({
@@ -102,7 +102,6 @@ function openEdit(product) {
         is_new:            !!product.is_new,
         is_sale:           !!product.is_sale,
         stock_quantity:    product.stock_quantity ?? '',
-        price_from:        product.price_from ?? '',
     }
     licenses.value = (product.licenses || []).map(l => ({
         name:            l.name,
@@ -219,6 +218,7 @@ async function remove(id) {
                         <th class="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Вендор</th>
                         <th class="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Статус</th>
                         <th class="px-4 py-3 text-center text-xs text-muted font-semibold uppercase">Лицензий</th>
+                        <th class="px-4 py-3 text-center text-xs text-muted font-semibold uppercase">Кол-во</th>
                         <th class="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Метки</th>
                         <th class="px-4 py-3"></th>
                     </tr>
@@ -240,6 +240,10 @@ async function remove(id) {
                         <td class="px-4 py-3 text-center text-sm">
                             <span v-if="p.licenses?.length" class="font-medium text-primary">{{ p.licenses.length }}</span>
                             <span v-else class="text-red-400 text-xs font-medium">Нет</span>
+                        </td>
+                        <td class="px-4 py-3 text-center text-sm">
+                            <span v-if="p.stock_quantity !== null && p.stock_quantity !== undefined" class="font-medium">{{ p.stock_quantity }}</span>
+                            <span v-else class="text-muted">—</span>
                         </td>
                         <td class="px-4 py-3">
                             <span v-if="p.is_hit"  class="inline-block bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded mr-1">Хит</span>
@@ -341,17 +345,10 @@ async function remove(id) {
                             </select>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-sm font-medium text-dark mb-1">Цена от (₸) — для каталога</label>
-                            <input v-model.number="form.price_from" type="number" min="0" placeholder="0"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-dark mb-1">Количество на складе</label>
-                            <input v-model.number="form.stock_quantity" type="number" min="0" placeholder="Не ограничено"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-                        </div>
+                    <div>
+                        <label class="block text-sm font-medium text-dark mb-1">Количество на складе</label>
+                        <input v-model.number="form.stock_quantity" type="number" min="0" placeholder="Не ограничено"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-dark mb-1">Статус</label>
