@@ -145,6 +145,40 @@ class ProductController extends Controller
         return response()->json($product);
     }
 
+    public function syncLicenses(Request $request, int $id): JsonResponse
+    {
+        $product = Product::findOrFail($id);
+
+        $request->validate([
+            'licenses'                    => 'array',
+            'licenses.*.name'             => 'required|string|max:255',
+            'licenses.*.price'            => 'required|numeric|min:0',
+            'licenses.*.old_price'        => 'nullable|numeric|min:0',
+            'licenses.*.type'             => 'in:perpetual,subscription,volume',
+            'licenses.*.devices'          => 'nullable|string|max:50',
+            'licenses.*.duration_months'  => 'nullable|integer|min:1',
+            'licenses.*.in_stock'         => 'boolean',
+        ]);
+
+        $product->licenses()->delete();
+
+        foreach ($request->input('licenses', []) as $i => $lic) {
+            $product->licenses()->create([
+                'name'            => $lic['name'],
+                'price'           => $lic['price'],
+                'old_price'       => $lic['old_price'] ?: null,
+                'type'            => $lic['type'] ?? 'perpetual',
+                'devices'         => $lic['devices'] ?: null,
+                'duration_months' => $lic['duration_months'] ?: null,
+                'in_stock'        => $lic['in_stock'] ?? true,
+                'sort_order'      => $i,
+            ]);
+        }
+
+        $product->load('licenses');
+        return response()->json($product->licenses);
+    }
+
     public function uploadImage(Request $request, int $id): JsonResponse
     {
         $product = Product::findOrFail($id);

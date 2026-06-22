@@ -19,6 +19,8 @@ const currentImage     = ref(null)
 const uploadingImage   = ref(false)
 const imageInputRef    = ref(null)
 
+const licenses = ref([])
+
 const emptyForm = () => ({
     name: '', category_id: '', vendor_id: '', short_description: '',
     description: '', version: '', language: '', delivery_type: 'key',
@@ -26,10 +28,16 @@ const emptyForm = () => ({
     stock_quantity: '', price_from: '',
 })
 
+const emptyLicense = () => ({
+    name: '', price: '', old_price: '', type: 'perpetual',
+    devices: '', duration_months: '', in_stock: true,
+})
+
 const form = ref(emptyForm())
 const editingId = ref(null)
 
 const deliveryLabels = { download: 'Загрузка', box: 'Коробка', key: 'Ключ' }
+const licenseTypes   = { perpetual: 'Бессрочная', subscription: 'Подписка', volume: 'Корпоративная' }
 const statusLabels   = {
     active:       { label: 'Активен',         color: 'text-green-600' },
     inactive:     { label: 'Неактивен',        color: 'text-gray-400' },
@@ -71,6 +79,7 @@ function openCreate() {
     editMode.value  = false
     editingId.value = null
     form.value      = emptyForm()
+    licenses.value  = []
     errors.value    = {}
     resetImageState()
     showModal.value = true
@@ -95,12 +104,29 @@ function openEdit(product) {
         stock_quantity:    product.stock_quantity ?? '',
         price_from:        product.price_from ?? '',
     }
+    licenses.value = (product.licenses || []).map(l => ({
+        name:            l.name,
+        price:           l.price,
+        old_price:       l.old_price ?? '',
+        type:            l.type || 'perpetual',
+        devices:         l.devices || '',
+        duration_months: l.duration_months ?? '',
+        in_stock:        !!l.in_stock,
+    }))
     errors.value       = {}
     imageFile.value    = null
     imagePreview.value = null
     currentImage.value = product.main_image || null
     if (imageInputRef.value) imageInputRef.value.value = ''
     showModal.value    = true
+}
+
+function addLicense() {
+    licenses.value.push(emptyLicense())
+}
+
+function removeLicense(i) {
+    licenses.value.splice(i, 1)
 }
 
 function onImagePicked(e) {
@@ -136,6 +162,16 @@ async function save() {
             const { data } = await axios.post('/admin/products', form.value)
             savedId = data.id
         }
+
+        // Синхронизируем лицензии
+        await axios.post(`/admin/products/${savedId}/licenses/sync`, {
+            licenses: licenses.value.map(l => ({
+                ...l,
+                price:           Number(l.price) || 0,
+                old_price:       l.old_price !== '' ? Number(l.old_price) : null,
+                duration_months: l.duration_months !== '' ? Number(l.duration_months) : null,
+            })),
+        })
 
         if (imageFile.value) {
             uploadingImage.value = true
@@ -182,7 +218,7 @@ async function remove(id) {
                         <th class="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Категория</th>
                         <th class="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Вендор</th>
                         <th class="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Статус</th>
-                        <th class="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Кол-во</th>
+                        <th class="px-4 py-3 text-center text-xs text-muted font-semibold uppercase">Лицензий</th>
                         <th class="px-4 py-3 text-left text-xs text-muted font-semibold uppercase">Метки</th>
                         <th class="px-4 py-3"></th>
                     </tr>
@@ -201,9 +237,9 @@ async function remove(id) {
                                 {{ statusLabels[p.status]?.label }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-sm text-center">
-                            <span v-if="p.stock_quantity !== null" class="font-medium">{{ p.stock_quantity }}</span>
-                            <span v-else class="text-muted">—</span>
+                        <td class="px-4 py-3 text-center text-sm">
+                            <span v-if="p.licenses?.length" class="font-medium text-primary">{{ p.licenses.length }}</span>
+                            <span v-else class="text-red-400 text-xs font-medium">Нет</span>
                         </td>
                         <td class="px-4 py-3">
                             <span v-if="p.is_hit"  class="inline-block bg-orange-100 text-orange-700 text-xs px-2 py-0.5 rounded mr-1">Хит</span>
@@ -231,47 +267,35 @@ async function remove(id) {
 
         <!-- Modal -->
         <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-            <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
                     <h2 class="font-bold text-dark">{{ editMode ? 'Редактировать товар' : 'Новый товар' }}</h2>
                     <button @click="showModal = false" class="text-muted hover:text-dark text-xl leading-none">&times;</button>
                 </div>
-                <form @submit.prevent="save" class="p-6 space-y-4">
+                <form @submit.prevent="save" class="p-6 space-y-5">
 
                     <!-- Изображение -->
                     <div>
                         <label class="block text-sm font-medium text-dark mb-2">Изображение товара</label>
-
-                        <!-- Текущее изображение (при редактировании) -->
                         <div v-if="currentImage && !imagePreview" class="mb-3 flex items-start gap-3">
                             <img :src="imageUrl(currentImage)" class="w-24 h-24 object-cover rounded-lg border border-gray-200" />
-                            <button type="button" @click="removeCurrentImage"
-                                class="text-xs text-red-500 hover:underline mt-1">
-                                Удалить фото
-                            </button>
+                            <button type="button" @click="removeCurrentImage" class="text-xs text-red-500 hover:underline mt-1">Удалить фото</button>
                         </div>
-
-                        <!-- Превью выбранного файла -->
                         <div v-if="imagePreview" class="mb-3 flex items-start gap-3">
                             <img :src="imagePreview" class="w-24 h-24 object-cover rounded-lg border border-gray-200" />
-                            <button type="button" @click="clearImagePick"
-                                class="text-xs text-red-500 hover:underline mt-1">
-                                Отменить выбор
-                            </button>
+                            <button type="button" @click="clearImagePick" class="text-xs text-red-500 hover:underline mt-1">Отменить выбор</button>
                         </div>
-
-                        <!-- Зона выбора файла -->
-                        <label class="flex items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors bg-gray-50">
+                        <label class="flex items-center justify-center w-full h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors bg-gray-50">
                             <div class="text-center">
                                 <p class="text-sm text-muted">{{ imagePreview ? 'Выбрать другое' : 'Нажмите для выбора' }}</p>
                                 <p class="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP — до 4 МБ</p>
                             </div>
-                            <input ref="imageInputRef" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
-                                class="hidden" @change="onImagePicked" />
+                            <input ref="imageInputRef" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="onImagePicked" />
                         </label>
                         <p v-if="errors.image" class="text-red-500 text-xs mt-1">{{ errors.image[0] }}</p>
                     </div>
 
+                    <!-- Основные поля -->
                     <div>
                         <label class="block text-sm font-medium text-dark mb-1">Название *</label>
                         <input v-model="form.name" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
@@ -299,7 +323,7 @@ async function remove(id) {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-dark mb-1">Описание</label>
-                        <textarea v-model="form.description" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"></textarea>
+                        <textarea v-model="form.description" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"></textarea>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
                         <div>
@@ -319,16 +343,14 @@ async function remove(id) {
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-sm font-medium text-dark mb-1">Цена (₸)</label>
+                            <label class="block text-sm font-medium text-dark mb-1">Цена от (₸) — для каталога</label>
                             <input v-model.number="form.price_from" type="number" min="0" placeholder="0"
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-                            <p v-if="errors.price_from" class="text-red-500 text-xs mt-1">{{ errors.price_from[0] }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-dark mb-1">Количество на складе</label>
                             <input v-model.number="form.stock_quantity" type="number" min="0" placeholder="Не ограничено"
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-                            <p v-if="errors.stock_quantity" class="text-red-500 text-xs mt-1">{{ errors.stock_quantity[0] }}</p>
                         </div>
                     </div>
                     <div>
@@ -350,6 +372,74 @@ async function remove(id) {
                             <input type="checkbox" v-model="form.is_sale" class="rounded" /> Акция
                         </label>
                     </div>
+
+                    <!-- Лицензии -->
+                    <div class="border-t border-gray-100 pt-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h3 class="text-sm font-semibold text-dark">Варианты лицензий</h3>
+                                <p class="text-xs text-muted mt-0.5">Цены и варианты покупки — отображаются на странице товара</p>
+                            </div>
+                            <button type="button" @click="addLicense"
+                                class="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-colors font-medium">
+                                + Добавить
+                            </button>
+                        </div>
+
+                        <div v-if="licenses.length === 0" class="text-center py-6 bg-amber-50 rounded-lg border border-amber-100">
+                            <p class="text-sm text-amber-700 font-medium">Нет лицензий — товар нельзя купить</p>
+                            <p class="text-xs text-amber-600 mt-1">Добавьте хотя бы один вариант цены</p>
+                        </div>
+
+                        <div v-for="(lic, i) in licenses" :key="i"
+                            class="mb-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                            <div class="flex items-start justify-between mb-2">
+                                <span class="text-xs font-semibold text-muted uppercase tracking-wide">Лицензия {{ i + 1 }}</span>
+                                <button type="button" @click="removeLicense(i)" class="text-red-400 hover:text-red-600 text-xs">✕ Удалить</button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <div class="col-span-2">
+                                    <label class="block text-xs text-muted mb-1">Название *</label>
+                                    <input v-model="lic.name" required placeholder="напр. 1 ПК бессрочно"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-muted mb-1">Цена (₸) *</label>
+                                    <input v-model="lic.price" type="number" min="0" required placeholder="0"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-muted mb-1">Старая цена (₸)</label>
+                                    <input v-model="lic.old_price" type="number" min="0" placeholder="для зачёркивания"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-muted mb-1">Тип</label>
+                                    <select v-model="lic.type" class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary">
+                                        <option v-for="(label, val) in licenseTypes" :key="val" :value="val">{{ label }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-muted mb-1">Срок (мес.)</label>
+                                    <input v-model="lic.duration_months" type="number" min="1" placeholder="пусто = бессрочно"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-muted mb-1">Устройства</label>
+                                    <input v-model="lic.devices" placeholder="1, 3, 5, unlimited"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary" />
+                                </div>
+                                <div class="flex items-center gap-2 pt-4">
+                                    <input type="checkbox" v-model="lic.in_stock" :id="`in_stock_${i}`" class="rounded" />
+                                    <label :for="`in_stock_${i}`" class="text-sm cursor-pointer">В наличии</label>
+                                </div>
+                            </div>
+                        </div>
+                        <p v-if="errors['licenses.0.name'] || errors['licenses.0.price']" class="text-red-500 text-xs mt-1">
+                            Заполните обязательные поля лицензий
+                        </p>
+                    </div>
+
                     <div v-if="errors.general" class="text-red-500 text-sm">{{ errors.general[0] }}</div>
                     <div class="flex gap-3 pt-2">
                         <button type="submit" :disabled="saving" class="flex-1 bg-primary text-white py-2.5 rounded-lg font-medium hover:bg-primary-700 disabled:opacity-60 transition-colors">
