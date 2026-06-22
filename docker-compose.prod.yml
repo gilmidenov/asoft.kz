@@ -48,6 +48,8 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:5432:5432"
     container_name: asoft_postgres
     restart: unless-stopped
     env_file:
