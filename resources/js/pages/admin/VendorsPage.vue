@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { useCatalogStore } from '@/stores/catalog'
+
+const catalogStore = useCatalogStore()
 
 const vendors   = ref([])
 const loading   = ref(true)
@@ -52,6 +55,7 @@ async function save() {
         }
         showModal.value = false
         await load()
+        catalogStore.refreshVendors()
     } catch (e) {
         errors.value = e.response?.data?.errors || { general: [e.response?.data?.message || 'Ошибка'] }
     } finally {
@@ -63,6 +67,7 @@ async function remove(id) {
     if (!confirm('Удалить вендора?')) return
     await axios.delete(`/admin/vendors/${id}`)
     await load()
+    catalogStore.refreshVendors()
 }
 </script>
 

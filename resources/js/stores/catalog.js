@@ -18,5 +18,15 @@ export const useCatalogStore = defineStore('catalog', () => {
         vendors.value = data
     }
 
-    return { categories, vendors, fetchCategories, fetchVendors }
+    async function refreshCategories() {
+        const { data } = await axios.get('/categories')
+        categories.value = data
+    }
+
+    async function refreshVendors() {
+        const { data } = await axios.get('/vendors')
+        vendors.value = data
+    }
+
+    return { categories, vendors, fetchCategories, fetchVendors, refreshCategories, refreshVendors }
 })

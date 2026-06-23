@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { useCatalogStore } from '@/stores/catalog'
+
+const catalogStore = useCatalogStore()
 
 const categories = ref([])
 const loading    = ref(true)
@@ -53,6 +56,7 @@ async function save() {
         }
         showModal.value = false
         await load()
+        catalogStore.refreshCategories()
     } catch (e) {
         errors.value = e.response?.data?.errors || { general: [e.response?.data?.message || 'Ошибка'] }
     } finally {
@@ -64,6 +68,7 @@ async function remove(id) {
     if (!confirm('Удалить категорию? Связанные товары останутся без категории.')) return
     await axios.delete(`/admin/categories/${id}`)
     await load()
+    catalogStore.refreshCategories()
 }
 </script>
 

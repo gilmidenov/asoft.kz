@@ -19,6 +19,7 @@ const filters = ref({
     price_to:   route.query.price_to   || '',
     is_hit:     route.query.is_hit     === '1',
     is_sale:    route.query.is_sale    === '1',
+    vendor:     route.query.vendor     || '',
     page:       route.query.page ? Number(route.query.page) : 1,
 })
 
@@ -29,9 +30,10 @@ async function loadProducts() {
     try {
         const params = {
             ...filters.value,
-            is_hit:   filters.value.is_hit  ? 1 : undefined,
-            is_sale:  filters.value.is_sale ? 1 : undefined,
-            category: categorySlug.value    || undefined,
+            is_hit:   filters.value.is_hit   ? 1 : undefined,
+            is_sale:  filters.value.is_sale  ? 1 : undefined,
+            category: categorySlug.value     || undefined,
+            vendor:   filters.value.vendor   || undefined,
         }
         const { data } = await axios.get('/products', { params })
         products.value   = data.data
@@ -45,14 +47,21 @@ watch(filters, (newFilters) => {
     router.replace({
         query: {
             ...newFilters,
-            is_hit:  newFilters.is_hit  ? '1' : undefined,
-            is_sale: newFilters.is_sale ? '1' : undefined,
+            is_hit:  newFilters.is_hit   ? '1' : undefined,
+            is_sale: newFilters.is_sale  ? '1' : undefined,
+            vendor:  newFilters.vendor   || undefined,
         }
     })
     loadProducts()
 }, { deep: true })
 
 watch(() => route.params.slug, () => loadProducts())
+
+watch(() => route.query.vendor, (newVendor) => {
+    if (filters.value.vendor !== (newVendor || '')) {
+        filters.value.vendor = newVendor || ''
+    }
+})
 
 onMounted(() => loadProducts())
 
