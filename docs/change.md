@@ -126,6 +126,47 @@ watch(() => route.query.vendor, (newVendor) => {
 
 ---
 
+## 2026-06-23 — Страница вендора с товарами + подкатегории в сайдбаре каталога
+
+### Проблемы
+
+1. **Нажатие на вендора** сразу открывало каталог без какой-либо информации о вендоре — описание, сайт, логотип были нигде не видны.
+
+2. **В каталоге при выборе категории** в сайдбаре не было фильтра по подкатегориям — пользователь не знал, какие подкатегории существуют у выбранной категории.
+
+---
+
+### Решения
+
+#### 1. `resources/js/pages/VendorPage.vue` (новый файл)
+
+Страница `/vendors/:slug` — карточка вендора:
+- Логотип (или инициал, если логотип не задан)
+- Название, описание, ссылка на сайт
+- Счётчик товаров
+- Сетка всех товаров вендора (через `GET /api/products?vendor=:slug`)
+- Breadcrumb: Главная / Вендоры / Название вендора
+
+#### 2. `resources/js/pages/VendorsPage.vue`
+
+Ссылки с карточек вендоров изменены с `{ name: 'catalog', query: { vendor } }` на `{ name: 'vendor', params: { slug } }`. Карточки получили иконку-инициал и отображают описание вендора.
+
+#### 3. `resources/js/router/index.js`
+
+Добавлен маршрут `{ path: '/vendors/:slug', name: 'vendor', component: VendorPage }`.
+
+#### 4. `resources/js/pages/CatalogPage.vue`
+
+- Импортирован `useCatalogStore` (данные уже загружены хедером — без дополнительных запросов)
+- Computed `currentCategory` — находит текущую категорию в сторе (родительская или дочерняя)
+- Computed `subcategories` — возвращает детей родительской категории; если текущая категория дочерняя — возвращает братьев (siblings) для отображения в сайдбаре
+- Computed `parentCategory` — родитель текущей категории (для breadcrumb и заголовка секции)
+- Computed `categoryLabel` — реальное имя категории вместо prettified slug
+- Sidebar: секция подкатегорий появляется над фильтрами, когда у категории есть дети/братья; активная подкатегория подсвечивается синим; ссылка «Все [родитель]» ведёт обратно на родительскую категорию
+- Breadcrumb: показывает правильную иерархию Главная / Родитель / Подкатегория (было: slug через дефисы)
+
+---
+
 ### Файлы, затронутые изменениями
 
 | Файл | Что изменено |
@@ -134,4 +175,16 @@ watch(() => route.query.vendor, (newVendor) => {
 | `resources/js/pages/admin/CategoriesPage.vue` | Вызов `refreshCategories()` после CRUD-операций |
 | `resources/js/pages/admin/VendorsPage.vue` | Вызов `refreshVendors()` после CRUD-операций |
 | `resources/js/pages/CatalogPage.vue` | Поддержка фильтра `vendor` в URL, фильтрах и API-запросе |
+| `public/build/assets/*` | Пересобранные бандлы (Vite build) |
+
+---
+
+### Файлы, затронутые изменениями (коммит 2)
+
+| Файл | Что изменено |
+|------|-------------|
+| `resources/js/pages/VendorPage.vue` | Новая страница карточки вендора |
+| `resources/js/pages/VendorsPage.vue` | Ссылки → `/vendors/:slug`, добавлены иконки и описание |
+| `resources/js/router/index.js` | Маршрут `/vendors/:slug` → `VendorPage` |
+| `resources/js/pages/CatalogPage.vue` | Sidebar подкатегорий, реальный breadcrumb, categoryLabel |
 | `public/build/assets/*` | Пересобранные бандлы (Vite build) |

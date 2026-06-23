@@ -10,6 +10,7 @@ const RegisterPage    = () => import('@/pages/RegisterPage.vue')
 const AccountPage     = () => import('@/pages/AccountPage.vue')
 const FavoritesPage   = () => import('@/pages/FavoritesPage.vue')
 const VendorsPage     = () => import('@/pages/VendorsPage.vue')
+const VendorPage      = () => import('@/pages/VendorPage.vue')
 const NotFoundPage    = () => import('@/pages/NotFoundPage.vue')
 
 const AdminLayout     = () => import('@/pages/admin/AdminLayout.vue')
@@ -31,6 +32,7 @@ const routes = [
     { path: '/account',         name: 'account',   component: AccountPage,  meta: { requiresAuth: true } },
     { path: '/favorites',       name: 'favorites', component: FavoritesPage, meta: { requiresAuth: true } },
     { path: '/vendors',         name: 'vendors',   component: VendorsPage },
+    { path: '/vendors/:slug',   name: 'vendor',    component: VendorPage },
     {
         path: '/admin',
         component: AdminLayout,
