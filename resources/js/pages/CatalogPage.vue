@@ -133,31 +133,20 @@ function resetFilters() {
 
                 <!-- Подкатегории -->
                 <div v-if="subcategories.length">
-                    <p class="text-sm font-semibold text-dark mb-2">
+                    <label class="block text-sm font-semibold text-dark mb-2">
                         {{ parentCategory ? parentCategory.name : categoryLabel }}
-                    </p>
-                    <ul class="space-y-0.5">
-                        <!-- Ссылка «Все» на родительскую категорию -->
-                        <li v-if="parentCategory">
-                            <RouterLink
-                                :to="{ name: 'category', params: { slug: parentCategory.slug } }"
-                                class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors text-muted hover:text-primary hover:bg-primary-50">
-                                Все {{ parentCategory.name }}
-                            </RouterLink>
-                        </li>
-                        <li v-for="sub in subcategories" :key="sub.id">
-                            <RouterLink
-                                :to="{ name: 'category', params: { slug: sub.slug } }"
-                                :class="[
-                                    'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
-                                    sub.slug === categorySlug
-                                        ? 'bg-primary text-white font-medium'
-                                        : 'text-dark hover:text-primary hover:bg-primary-50'
-                                ]">
-                                {{ sub.name }}
-                            </RouterLink>
-                        </li>
-                    </ul>
+                    </label>
+                    <select
+                        :value="categorySlug"
+                        @change="(e) => router.push({ name: 'category', params: { slug: e.target.value } })"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                        <option :value="parentCategory ? parentCategory.slug : categorySlug">
+                            Все {{ parentCategory ? parentCategory.name : categoryLabel }}
+                        </option>
+                        <option v-for="sub in subcategories" :key="sub.id" :value="sub.slug">
+                            {{ sub.name }}
+                        </option>
+                    </select>
                     <div class="border-t border-gray-100 mt-4 pt-4"></div>
                 </div>
 

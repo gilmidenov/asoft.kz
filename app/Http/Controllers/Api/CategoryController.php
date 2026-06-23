@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class CategoryController extends Controller
@@ -76,5 +77,23 @@ class CategoryController extends Controller
         $category->delete();
 
         return response()->json(null, 204);
+    }
+
+    public function uploadImage(Request $request, int $id): JsonResponse
+    {
+        $category = Category::findOrFail($id);
+
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:4096',
+        ]);
+
+        if ($category->getRawOriginal('image') && !str_starts_with($category->getRawOriginal('image'), 'http')) {
+            Storage::disk('public')->delete($category->getRawOriginal('image'));
+        }
+
+        $path = $request->file('image')->store('categories', 'public');
+        $category->update(['image' => $path]);
+
+        return response()->json($category->fresh('children'));
     }
 }

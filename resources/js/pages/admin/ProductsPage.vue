@@ -310,7 +310,12 @@ async function remove(id) {
                             <label class="block text-sm font-medium text-dark mb-1">Категория</label>
                             <select v-model="form.category_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
                                 <option value="">— Не выбрана —</option>
-                                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                                <template v-for="c in categories" :key="c.id">
+                                    <option :value="c.id">{{ c.name }}</option>
+                                    <option v-for="child in (c.children || [])" :key="child.id" :value="child.id">
+                                        &nbsp;&nbsp;&nbsp;└ {{ child.name }}
+                                    </option>
+                                </template>
                             </select>
                         </div>
                         <div>

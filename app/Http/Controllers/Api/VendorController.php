@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Vendor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class VendorController extends Controller
@@ -64,5 +65,23 @@ class VendorController extends Controller
     {
         Vendor::findOrFail($id)->delete();
         return response()->json(null, 204);
+    }
+
+    public function uploadImage(Request $request, int $id): JsonResponse
+    {
+        $vendor = Vendor::findOrFail($id);
+
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:4096',
+        ]);
+
+        if ($vendor->getRawOriginal('logo') && !str_starts_with($vendor->getRawOriginal('logo'), 'http')) {
+            Storage::disk('public')->delete($vendor->getRawOriginal('logo'));
+        }
+
+        $path = $request->file('image')->store('vendors', 'public');
+        $vendor->update(['logo' => $path]);
+
+        return response()->json($vendor->fresh());
     }
 }

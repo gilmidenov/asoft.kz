@@ -188,3 +188,78 @@ watch(() => route.query.vendor, (newVendor) => {
 | `resources/js/router/index.js` | Маршрут `/vendors/:slug` → `VendorPage` |
 | `resources/js/pages/CatalogPage.vue` | Sidebar подкатегорий, реальный breadcrumb, categoryLabel |
 | `public/build/assets/*` | Пересобранные бандлы (Vite build) |
+
+---
+
+## 2026-06-23 — Подкатегории в форме товара, dropdown подкатегорий, загрузка изображений категорий/вендоров
+
+### Проблемы
+
+1. **Форма создания/редактирования товара** в админке показывала только корневые категории, не позволяя выбрать подкатегорию.
+
+2. **Фильтр подкатегорий в сайдбаре каталога** отображался как список ссылок — неэстетично и занимал много места.
+
+3. **Поле «Изображение»** у категорий и **«Логотип»** у вендоров принимали URL строкой, которые нигде не отображались (нет поддержки внешних ссылок в VendorPage).
+
+---
+
+### Решения
+
+#### 1. `resources/js/pages/admin/ProductsPage.vue`
+
+Выпадающий список категорий теперь включает подкатегории с отступом:
+
+```html
+<template v-for="c in categories" :key="c.id">
+    <option :value="c.id">{{ c.name }}</option>
+    <option v-for="child in (c.children || [])" :key="child.id" :value="child.id">
+        &nbsp;&nbsp;&nbsp;└ {{ child.name }}
+    </option>
+</template>
+```
+
+Родительские категории выбираемы, подкатегории показаны с отступом и символом `└`. Оба уровня опциональны (поле не обязательное).
+
+#### 2. `resources/js/pages/CatalogPage.vue`
+
+Список ссылок подкатегорий заменён на `<select>`:
+
+```html
+<select :value="categorySlug" @change="(e) => router.push({ name: 'category', params: { slug: e.target.value } })">
+    <option :value="parentCategory ? parentCategory.slug : categorySlug">Все …</option>
+    <option v-for="sub in subcategories" :key="sub.id" :value="sub.slug">{{ sub.name }}</option>
+</select>
+```
+
+При смене опции роутер переходит на выбранную подкатегорию. Текущая подкатегория автоматически выделена через `:value="categorySlug"`.
+
+#### 3. Загрузка изображений категорий и вендоров
+
+**Backend:**
+
+- `app/Models/Category.php`: добавлен accessor `image()` — преобразует относительный путь в полный URL через `Storage::disk('public')->url($value)`, URL-ссылки остаются как есть
+- `app/Models/Vendor.php`: добавлен accessor `logo()` — аналогично
+- `app/Http/Controllers/Api/CategoryController.php`: добавлен метод `uploadImage()` — принимает файл, сохраняет в `storage/app/public/categories/`, удаляет старый файл (если был), возвращает обновлённую категорию с полным URL
+- `app/Http/Controllers/Api/VendorController.php`: добавлен метод `uploadImage()` — аналогично, сохраняет в `storage/app/public/vendors/`
+- `routes/api.php`: добавлены маршруты `POST /admin/categories/{id}/image` и `POST /admin/vendors/{id}/image`
+
+**Frontend:**
+
+- `resources/js/pages/admin/CategoriesPage.vue`: поле URL заменено зоной загрузки файла (аналогично ProductsPage); после сохранения/создания, если выбран файл — POST multipart на `/admin/categories/{id}/image`; в таблице добавлена колонка с превью изображения категории
+- `resources/js/pages/admin/VendorsPage.vue`: поле URL заменено зоной загрузки логотипа; после сохранения POST на `/admin/vendors/{id}/image`; в таблице добавлена колонка с логотипом/инициалом
+
+---
+
+### Файлы, затронутые изменениями (коммит 3)
+
+| Файл | Что изменено |
+|------|-------------|
+| `app/Models/Category.php` | Accessor `image()` → полный URL |
+| `app/Models/Vendor.php` | Accessor `logo()` → полный URL |
+| `app/Http/Controllers/Api/CategoryController.php` | Метод `uploadImage()` |
+| `app/Http/Controllers/Api/VendorController.php` | Метод `uploadImage()` |
+| `routes/api.php` | Маршруты `POST .../image` для категорий и вендоров |
+| `resources/js/pages/admin/ProductsPage.vue` | Подкатегории в select категорий |
+| `resources/js/pages/admin/CategoriesPage.vue` | Загрузка файла вместо URL-поля |
+| `resources/js/pages/admin/VendorsPage.vue` | Загрузка файла вместо URL-поля |
+| `resources/js/pages/CatalogPage.vue` | Dropdown подкатегорий вместо списка ссылок |

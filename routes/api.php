@@ -66,7 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // ============================================================
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::apiResource('categories', CategoryController::class)->except(['index', 'show']);
+        Route::post('categories/{id}/image', [CategoryController::class, 'uploadImage']);
         Route::apiResource('vendors', VendorController::class)->except(['index', 'show']);
+        Route::post('vendors/{id}/image', [VendorController::class, 'uploadImage']);
         Route::get('products', [ProductController::class, 'adminIndex']);
         Route::post('products/{id}/licenses/sync', [ProductController::class, 'syncLicenses']);
         Route::post('products/{id}/image', [ProductController::class, 'uploadImage']);
