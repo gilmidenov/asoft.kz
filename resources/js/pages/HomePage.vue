@@ -59,8 +59,9 @@ onMounted(async () => {
                     <RouterLink v-for="cat in catalogStore.categories" :key="cat.id"
                         :to="{ name: 'category', params: { slug: cat.slug } }"
                         class="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 hover:border-primary hover:bg-primary-50 transition-all group text-center">
-                        <div class="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center group-hover:bg-primary transition-colors">
-                            <span class="text-primary group-hover:text-white font-bold text-lg">{{ cat.name[0] }}</span>
+                        <div class="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center group-hover:bg-primary transition-colors overflow-hidden">
+                            <img v-if="cat.image" :src="cat.image" :alt="cat.name" class="w-full h-full object-contain p-1" />
+                            <span v-else class="text-primary group-hover:text-white font-bold text-lg">{{ cat.name[0] }}</span>
                         </div>
                         <span class="text-xs font-medium text-dark group-hover:text-primary leading-tight">{{ cat.name }}</span>
                     </RouterLink>

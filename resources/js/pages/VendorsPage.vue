@@ -16,8 +16,9 @@ onMounted(() => catalogStore.fetchVendors())
                 :to="{ name: 'vendor', params: { slug: vendor.slug } }"
                 class="bg-white border border-gray-100 rounded-xl p-4 text-center hover:border-primary hover:shadow-sm transition-all group"
             >
-                <div class="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center mx-auto mb-2 group-hover:bg-primary transition-colors">
-                    <span class="text-primary group-hover:text-white font-bold text-lg">{{ vendor.name[0] }}</span>
+                <div class="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center mx-auto mb-2 group-hover:bg-primary transition-colors overflow-hidden">
+                    <img v-if="vendor.logo" :src="vendor.logo" :alt="vendor.name" class="w-full h-full object-contain p-1" />
+                    <span v-else class="text-primary group-hover:text-white font-bold text-lg">{{ vendor.name[0] }}</span>
                 </div>
                 <div class="font-medium text-dark text-sm">{{ vendor.name }}</div>
                 <div v-if="vendor.description" class="text-xs text-muted mt-1 line-clamp-1">{{ vendor.description }}</div>
