@@ -1,9 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
 
 const companyPages = ref([])
+
+const pagesCol1 = computed(() => companyPages.value.slice(0, Math.ceil(companyPages.value.length / 2)))
+const pagesCol2 = computed(() => companyPages.value.slice(Math.ceil(companyPages.value.length / 2)))
 
 onMounted(async () => {
     try {
@@ -40,7 +43,15 @@ onMounted(async () => {
                 <div>
                     <h4 class="font-semibold mb-4">О компании</h4>
                     <ul class="space-y-2 text-sm text-gray-400">
-                        <li v-for="page in companyPages" :key="page.slug">
+                        <li v-for="page in pagesCol1" :key="page.slug">
+                            <RouterLink
+                                :to="{ name: 'company-page', params: { slug: page.slug } }"
+                                class="hover:text-white transition-colors">
+                                {{ page.title }}
+                            </RouterLink>
+                        </li>
+                        <!-- На мобильных — вторая половина здесь же -->
+                        <li v-for="page in pagesCol2" :key="'m-' + page.slug" class="lg:hidden">
                             <RouterLink
                                 :to="{ name: 'company-page', params: { slug: page.slug } }"
                                 class="hover:text-white transition-colors">
@@ -49,13 +60,17 @@ onMounted(async () => {
                         </li>
                     </ul>
                 </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Помощь</h4>
+                <!-- Вторая половина — только на десктопе -->
+                <div class="hidden lg:block">
+                    <h4 class="font-semibold mb-4 invisible">О компании</h4>
                     <ul class="space-y-2 text-sm text-gray-400">
-                        <li><a href="#" class="hover:text-white transition-colors">Как активировать ключ</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Способы оплаты</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Возврат и обмен</a></li>
-                        <li><a href="#" class="hover:text-white transition-colors">Контакты</a></li>
+                        <li v-for="page in pagesCol2" :key="page.slug">
+                            <RouterLink
+                                :to="{ name: 'company-page', params: { slug: page.slug } }"
+                                class="hover:text-white transition-colors">
+                                {{ page.title }}
+                            </RouterLink>
+                        </li>
                     </ul>
                 </div>
                 <div>
