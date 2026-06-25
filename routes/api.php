@@ -98,6 +98,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('pages', [PageController::class, 'storePage']);
         Route::put('pages/{id}', [PageController::class, 'updatePage']);
         Route::delete('pages/{id}', [PageController::class, 'destroyPage']);
+        Route::post('pages/{id}/cover', [PageController::class, 'uploadCover']);
         // Элементы раздела
         Route::get('pages/{id}/items', [PageController::class, 'adminItems']);
         Route::post('pages/{id}/items', [PageController::class, 'storeItem']);

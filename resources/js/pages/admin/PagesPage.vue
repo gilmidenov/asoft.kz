@@ -26,8 +26,12 @@ const filePreview   = ref(null)
 const currentFile   = ref(null)
 const selectedFile  = ref(null)
 
+const coverRef     = ref(null)
+const coverFile    = ref(null)
+const coverPreview = ref(null)
+
 // ── Формы ────────────────────────────────────────────────────────
-const emptyPageForm = () => ({ title: '', description: '', sort_order: 0, is_active: true })
+const emptyPageForm = () => ({ title: '', description: '', type: 'catalog', body: '', sort_order: 0, is_active: true })
 const emptyItemForm = () => ({ title: '', content: '', file_type: 'text', sort_order: 0, is_active: true })
 const pageForm = ref(emptyPageForm())
 const itemForm = ref(emptyItemForm())
@@ -72,14 +76,25 @@ function openCreatePage() {
     editingPageId.value = null
     pageForm.value      = { ...emptyPageForm(), sort_order: maxSort + 1 }
     errors.value        = {}
+    coverFile.value     = null
+    coverPreview.value  = null
     showPageModal.value = true
 }
 
 function openEditPage(page) {
     editPageMode.value  = true
     editingPageId.value = page.id
-    pageForm.value      = { title: page.title, description: page.description || '', sort_order: page.sort_order || 0, is_active: !!page.is_active }
-    errors.value        = {}
+    pageForm.value      = {
+        title:       page.title,
+        description: page.description || '',
+        type:        page.type || 'catalog',
+        body:        page.body || '',
+        sort_order:  page.sort_order || 0,
+        is_active:   !!page.is_active,
+    }
+    errors.value       = {}
+    coverFile.value    = null
+    coverPreview.value = page.cover_image || null
     showPageModal.value = true
 }
 
@@ -87,15 +102,31 @@ async function savePage() {
     saving.value = true
     errors.value = {}
     try {
+        let savedId = editingPageId.value
+
         if (editPageMode.value) {
-            await axios.put(`/admin/pages/${editingPageId.value}`, pageForm.value)
-            showPageModal.value = false
-            await loadPages()
+            await axios.put(`/admin/pages/${savedId}`, pageForm.value)
         } else {
             const { data } = await axios.post('/admin/pages', pageForm.value)
-            showPageModal.value = false
-            await loadPages()
-            await selectPage(data)
+            savedId = data.id
+        }
+
+        // Загружаем обложку для раздела-типа "section"
+        if (coverFile.value) {
+            const fd = new FormData()
+            fd.append('image', coverFile.value)
+            await axios.post(`/admin/pages/${savedId}/cover`, fd, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
+        }
+
+        showPageModal.value = false
+        await loadPages()
+
+        // Для нового каталог-типа — сразу открываем управление контентом
+        if (!editPageMode.value && pageForm.value.type === 'catalog') {
+            const newPage = pages.value.find(p => p.id === savedId)
+            if (newPage) await selectPage(newPage)
         }
     } catch (e) {
         errors.value = e.response?.data?.errors || { general: [e.response?.data?.message || 'Ошибка'] }
@@ -192,6 +223,13 @@ async function removeItem(id) {
     await selectPage(selectedPage.value)
 }
 
+function onCoverPicked(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    coverFile.value    = file
+    coverPreview.value = URL.createObjectURL(file)
+}
+
 // Метка типа файла
 const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Статья' }
 </script>
@@ -216,7 +254,7 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                         <tr>
                             <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Название</th>
                             <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Slug</th>
-                            <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Элементов</th>
+                            <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Тип / Контент</th>
                             <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Порядок</th>
                             <th class="px-6 py-3 text-left text-xs text-muted font-semibold uppercase">Статус</th>
                             <th class="px-6 py-3"></th>
@@ -226,7 +264,10 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                         <tr v-for="page in pages" :key="page.id" class="hover:bg-gray-50">
                             <td class="px-6 py-4 font-medium text-dark">{{ page.title }}</td>
                             <td class="px-6 py-4 text-muted font-mono text-xs">{{ page.slug }}</td>
-                            <td class="px-6 py-4 text-muted">{{ page.all_items_count ?? 0 }}</td>
+                            <td class="px-6 py-4">
+                                <span v-if="page.type === 'section'" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Раздел</span>
+                                <span v-else class="text-xs text-muted">{{ page.all_items_count ?? 0 }} эл.</span>
+                            </td>
                             <td class="px-6 py-4 text-muted">{{ page.sort_order }}</td>
                             <td class="px-6 py-4">
                                 <span :class="page.is_active ? 'text-green-600' : 'text-gray-400'" class="font-medium text-xs">
@@ -234,7 +275,7 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-right space-x-3">
-                                <button @click="selectPage(page)" class="bg-primary text-white text-xs px-3 py-1.5 rounded-lg hover:bg-primary-700 transition-colors font-medium">
+                                <button v-if="page.type !== 'section'" @click="selectPage(page)" class="bg-primary text-white text-xs px-3 py-1.5 rounded-lg hover:bg-primary-700 transition-colors font-medium">
                                     Контент
                                 </button>
                                 <button @click="openEditPage(page)" class="text-primary hover:underline text-xs font-medium">Изменить</button>
@@ -324,7 +365,8 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                     <h2 class="font-bold text-dark">{{ editPageMode ? 'Редактировать раздел' : 'Новый раздел' }}</h2>
                     <button @click="showPageModal = false" class="text-muted hover:text-dark text-xl">&times;</button>
                 </div>
-                <form @submit.prevent="savePage" class="p-6 space-y-4">
+                <form @submit.prevent="savePage" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                    <!-- Название -->
                     <div>
                         <label class="block text-sm font-medium text-dark mb-1">
                             Название *
@@ -342,17 +384,62 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                         <p class="text-xs text-muted mt-1">Название видно в навигационной полосе — чем короче, тем лучше.</p>
                         <p v-if="errors.title" class="text-red-500 text-xs mt-1">{{ errors.title[0] }}</p>
                     </div>
+
+                    <!-- Тип раздела -->
                     <div>
-                        <label class="block text-sm font-medium text-dark mb-1">Описание</label>
+                        <label class="block text-sm font-medium text-dark mb-2">Тип раздела</label>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" v-model="pageForm.type" value="catalog" class="text-primary" />
+                                <span class="text-sm font-medium">Мини-каталог</span>
+                                <span class="text-xs text-muted hidden sm:inline">(статьи, PDF, изображения)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" v-model="pageForm.type" value="section" class="text-primary" />
+                                <span class="text-sm font-medium">Раздел</span>
+                                <span class="text-xs text-muted hidden sm:inline">(текст + обложка)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Описание -->
+                    <div>
+                        <label class="block text-sm font-medium text-dark mb-1">Краткое описание</label>
                         <textarea v-model="pageForm.description" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"></textarea>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-dark mb-1">Порядок сортировки</label>
-                        <input v-model.number="pageForm.sort_order" type="number" min="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+
+                    <!-- Текст раздела (только для section) -->
+                    <div v-if="pageForm.type === 'section'">
+                        <label class="block text-sm font-medium text-dark mb-1">Текст страницы</label>
+                        <textarea
+                            v-model="pageForm.body"
+                            rows="10"
+                            placeholder="Введите основной текст раздела. Например: история компании, описание услуг и т.д."
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary resize-y"
+                        ></textarea>
                     </div>
-                    <label class="flex items-center gap-2 text-sm cursor-pointer">
-                        <input type="checkbox" v-model="pageForm.is_active" class="rounded" /> Активен (показывается в меню)
-                    </label>
+
+                    <!-- Обложка (только для section) -->
+                    <div v-if="pageForm.type === 'section'">
+                        <label class="block text-sm font-medium text-dark mb-2">Изображение обложки</label>
+                        <img v-if="coverPreview" :src="coverPreview" class="w-full h-36 object-cover rounded-lg border border-gray-200 mb-2" />
+                        <label class="flex items-center justify-center w-full h-12 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors bg-gray-50">
+                            <span class="text-xs text-muted">{{ coverPreview ? 'Заменить изображение' : 'Загрузить обложку (JPG, PNG, WebP)' }}</span>
+                            <input ref="coverRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onCoverPicked" />
+                        </label>
+                    </div>
+
+                    <!-- Порядок и статус -->
+                    <div class="flex items-end gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-dark mb-1">Порядок сортировки</label>
+                            <input v-model.number="pageForm.sort_order" type="number" min="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+                        </div>
+                        <label class="flex items-center gap-2 text-sm cursor-pointer pb-2">
+                            <input type="checkbox" v-model="pageForm.is_active" class="rounded" /> Активен
+                        </label>
+                    </div>
+
                     <div v-if="errors.general" class="text-red-500 text-sm">{{ errors.general[0] }}</div>
                     <div class="flex gap-3 pt-2">
                         <button type="submit" :disabled="saving"

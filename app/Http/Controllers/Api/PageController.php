@@ -42,6 +42,8 @@ class PageController extends Controller
         $data = $request->validate([
             'title'       => 'required|string|max:30',
             'description' => 'nullable|string',
+            'type'        => 'in:catalog,section',
+            'body'        => 'nullable|string',
             'sort_order'  => 'integer|min:0',
             'is_active'   => 'boolean',
         ]);
@@ -58,6 +60,8 @@ class PageController extends Controller
         $data = $request->validate([
             'title'       => 'sometimes|string|max:30',
             'description' => 'nullable|string',
+            'type'        => 'in:catalog,section',
+            'body'        => 'nullable|string',
             'sort_order'  => 'integer|min:0',
             'is_active'   => 'boolean',
         ]);
@@ -67,6 +71,25 @@ class PageController extends Controller
         }
 
         $page->update($data);
+
+        return response()->json($page->fresh());
+    }
+
+    public function uploadCover(Request $request, int $id): JsonResponse
+    {
+        $page = Page::findOrFail($id);
+
+        $request->validate([
+            'image' => 'required|file|mimes:jpeg,jpg,png,webp|max:10240',
+        ]);
+
+        $raw = $page->getRawOriginal('cover_image');
+        if ($raw && !str_starts_with($raw, 'http')) {
+            Storage::disk('public')->delete($raw);
+        }
+
+        $path = $request->file('image')->store('page-covers', 'public');
+        $page->update(['cover_image' => $path]);
 
         return response()->json($page->fresh());
     }

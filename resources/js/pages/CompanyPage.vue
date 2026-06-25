@@ -54,8 +54,18 @@ watch(() => route.params.slug, (slug) => { if (slug) loadPage(slug) }, { immedia
                 </div>
             </div>
 
-            <!-- Контент — мини-каталог элементов -->
-            <div class="container mx-auto px-4 py-10">
+            <!-- ── Тип «Раздел»: обложка + текст ────────────────────── -->
+            <div v-if="page.type === 'section'" class="container mx-auto px-4 py-10 max-w-4xl">
+                <img v-if="page.cover_image" :src="page.cover_image" :alt="page.title"
+                    class="w-full max-h-80 object-cover rounded-2xl mb-8 shadow-sm" />
+                <div v-if="page.body" class="text-dark text-base leading-relaxed whitespace-pre-wrap">{{ page.body }}</div>
+                <div v-else-if="!page.cover_image" class="text-center py-20 text-muted">
+                    <p class="text-lg font-medium">Раздел пока пуст</p>
+                </div>
+            </div>
+
+            <!-- ── Тип «Мини-каталог»: сетка элементов ──────────────── -->
+            <div v-else class="container mx-auto px-4 py-10">
 
                 <!-- Нет элементов -->
                 <div v-if="!page.items || page.items.length === 0" class="text-center py-20 text-muted">

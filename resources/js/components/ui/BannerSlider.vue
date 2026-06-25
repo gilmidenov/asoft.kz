@@ -1,14 +1,11 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
 
-// ── Данные ──────────────────────────────────────────────────────
 const banners = ref([])
 const current = ref(0)
-let   timer   = null
 
-// Базовый корпоративный слайд — всегда первый в ротации
 const fallback = {
     title:       'Лицензионное программное обеспечение для бизнеса',
     subtitle:    'Официальные лицензии Microsoft, Kaspersky, Adobe и других ведущих вендоров. Мгновенная доставка ключей активации.',
@@ -17,31 +14,12 @@ const fallback = {
     image:       null,
 }
 
-// Фолбэк всегда первый — пользовательские баннеры добавляются после.
-// При 0 баннеров slides = [fallback] (нет стрелок — 1 слайд).
-// При 1+ баннере slides = [fallback, banner1, ...] (стрелки появляются).
 const slides = computed(() => [fallback, ...banners.value])
 
-// ── Автопрокрутка ────────────────────────────────────────────────
-function startTimer() {
-    if (slides.value.length < 2) return
-    timer = setInterval(() => {
-        current.value = (current.value + 1) % slides.value.length
-    }, 5000)
-}
-
-function stopTimer() { clearInterval(timer) }
-
-function goTo(idx) {
-    current.value = idx
-    stopTimer()
-    startTimer()
-}
-
+function goTo(idx) { current.value = idx }
 function prev() { goTo((current.value - 1 + slides.value.length) % slides.value.length) }
 function next() { goTo((current.value + 1) % slides.value.length) }
 
-// ── Загрузка ────────────────────────────────────────────────────
 onMounted(async () => {
     try {
         const { data } = await axios.get('/banners')
@@ -49,23 +27,14 @@ onMounted(async () => {
     } catch {
         // используем только фолбэк
     }
-    startTimer()
 })
-
-onUnmounted(stopTimer)
 </script>
 
 <template>
-    <section
-        class="relative overflow-hidden"
-        style="min-height: 440px;"
-        @mouseenter="stopTimer"
-        @mouseleave="startTimer"
-    >
+    <section class="relative overflow-hidden" style="min-height: 440px;">
         <!--
-            Все слайды всегда в DOM, перекрываются через absolute inset-0.
-            Видимость управляется opacity + z-index (не v-show / display:none).
-            transition-opacity duration-700 даёт плавное кроссфейд-переключение.
+            Все слайды в DOM, переключение через opacity/z-index.
+            Авто-ротация отключена — переключение только кнопками/точками.
         -->
         <div
             v-for="(slide, idx) in slides"
@@ -77,7 +46,6 @@ onUnmounted(stopTimer)
                     : 'opacity-0 z-0 pointer-events-none'
             ]"
         >
-            <!-- Фон: изображение с затемнением или градиент -->
             <div
                 v-if="slide.image"
                 class="absolute inset-0 bg-cover bg-center"
@@ -87,7 +55,6 @@ onUnmounted(stopTimer)
             </div>
             <div v-else class="absolute inset-0 bg-gradient-to-br from-header via-slate-800 to-primary-900" />
 
-            <!-- Контент слайда -->
             <div class="relative z-10 text-white text-center px-4 py-20 w-full max-w-4xl mx-auto">
                 <h1 class="text-4xl md:text-5xl font-bold mb-5 leading-tight">
                     {{ slide.title }}
@@ -113,7 +80,7 @@ onUnmounted(stopTimer)
             </div>
         </div>
 
-        <!-- Стрелки и точки — z-20 чтобы быть поверх всех слайдов -->
+        <!-- Стрелки и точки — только при наличии >1 слайда -->
         <template v-if="slides.length > 1">
             <button
                 @click="prev"
@@ -134,7 +101,6 @@ onUnmounted(stopTimer)
                 </svg>
             </button>
 
-            <!-- Индикаторные точки -->
             <div class="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-2">
                 <button
                     v-for="(_, idx) in slides"

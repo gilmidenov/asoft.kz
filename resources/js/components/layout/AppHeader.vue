@@ -13,6 +13,7 @@ const router       = useRouter()
 
 const searchQuery     = ref('')
 const catalogMenuOpen = ref(false)
+const hoveredCat      = ref(null)
 const companyPages    = ref([])
 
 // ── Карусель разделов компании ────────────────────────────────────
@@ -129,23 +130,38 @@ function handleSearch() {
                     </button>
 
                     <div v-if="catalogMenuOpen"
-                        class="absolute top-full left-0 mt-1 w-72 bg-white shadow-xl rounded-lg border border-gray-100 py-2 z-50 max-h-96 overflow-y-auto">
-                        <template v-for="cat in catalogStore.categories" :key="cat.id">
+                        class="absolute top-full left-0 mt-1 w-64 bg-white shadow-xl rounded-lg border border-gray-100 py-2 z-50 max-h-[80vh] overflow-y-auto">
+                        <div
+                            v-for="cat in catalogStore.categories"
+                            :key="cat.id"
+                            class="relative"
+                            @mouseenter="hoveredCat = cat.id"
+                            @mouseleave="hoveredCat = null"
+                        >
                             <RouterLink
                                 :to="{ name: 'category', params: { slug: cat.slug } }"
-                                @click="catalogMenuOpen = false"
-                                class="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-dark hover:text-primary transition-colors text-sm font-medium">
+                                @click="catalogMenuOpen = false; hoveredCat = null"
+                                class="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-gray-50 text-dark hover:text-primary transition-colors text-sm">
                                 {{ cat.name }}
+                                <svg v-if="cat.children?.length" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
                             </RouterLink>
-                            <RouterLink
-                                v-for="child in (cat.children || [])"
-                                :key="child.id"
-                                :to="{ name: 'category', params: { slug: child.slug } }"
-                                @click="catalogMenuOpen = false"
-                                class="flex items-center gap-2 px-4 py-1.5 pl-8 hover:bg-gray-50 text-muted hover:text-primary transition-colors text-xs">
-                                └ {{ child.name }}
-                            </RouterLink>
-                        </template>
+                            <!-- Flyout подменю подкатегорий -->
+                            <div
+                                v-if="cat.children?.length && hoveredCat === cat.id"
+                                class="absolute left-full top-0 w-56 bg-white shadow-xl rounded-lg border border-gray-100 py-2 z-50"
+                            >
+                                <RouterLink
+                                    v-for="child in cat.children"
+                                    :key="child.id"
+                                    :to="{ name: 'category', params: { slug: child.slug } }"
+                                    @click="catalogMenuOpen = false; hoveredCat = null"
+                                    class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-dark hover:text-primary transition-colors text-sm">
+                                    {{ child.name }}
+                                </RouterLink>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

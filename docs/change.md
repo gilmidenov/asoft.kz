@@ -1,5 +1,50 @@
 # Журнал изменений
 
+## 2026-06-25 — Flyout-каталог, два типа разделов, баннер без автопрокрутки
+
+### Изменения
+
+#### 1. Каталог — flyout-подменю подкатегорий
+
+**`resources/js/components/layout/AppHeader.vue`**
+
+Дропдаун каталога переработан: категории с дочерними показывают стрелку `>` справа; при наведении на такую категорию справа выезжает подменю с подкатегориями. Категории без детей выглядят как раньше. Технически: `hoveredCat = ref(null)` отслеживает hover; каждая строка категории обёрнута в `<div class="relative">` с `@mouseenter/@mouseleave`; подменю — `absolute left-full top-0`.
+
+#### 2. Два типа разделов компании — «Мини-каталог» и «Раздел»
+
+**Новая миграция** `2026_06_25_000004_add_type_body_cover_to_pages.php`:
+- Добавлены поля `type ENUM('catalog','section') DEFAULT 'catalog'`, `body TEXT`, `cover_image VARCHAR(500)` в таблицу `pages`.
+
+**`app/Models/Page.php`**:
+- `$fillable` дополнен `type`, `body`, `cover_image`.
+- Добавлен Eloquent Accessor `coverImage()` — возвращает полный Storage URL.
+
+**`app/Http/Controllers/Api/PageController.php`**:
+- `storePage`/`updatePage` принимают `type`, `body`.
+- Новый метод `uploadCover(Request, int)` — загружает обложку в `page-covers/`, удаляет старую при замене.
+
+**`routes/api.php`**:
+- Добавлен маршрут `POST /admin/pages/{id}/cover`.
+
+**`resources/js/pages/admin/PagesPage.vue`**:
+- Форма раздела дополнена радио-кнопками «Мини-каталог» / «Раздел».
+- Для типа «Раздел» показываются textarea для тела текста и загрузчик обложки.
+- Для типа «Мини-каталог» — поведение прежнее; кнопка «Контент» скрыта для разделов-типа «Раздел».
+- После создания «Мини-каталога» — автоматический переход в управление элементами; «Раздел» просто закрывает форму.
+
+**`resources/js/pages/CompanyPage.vue`**:
+- `v-if="page.type === 'section'"` → отображает `cover_image` + `body` как текст (`whitespace-pre-wrap`).
+- `v-else` → прежняя сетка элементов mini-catalog.
+
+#### 3. Баннер — только ручное переключение
+
+**`resources/js/components/ui/BannerSlider.vue`**:
+- Удалены `timer`, `startTimer`, `stopTimer`, `onUnmounted`.
+- Убраны `@mouseenter/@mouseleave` с `<section>`.
+- Баннер переключается только при клике на стрелки или точки навигации.
+
+---
+
 ## 2026-06-25 — Исправления: карусель разделов, слайдер баннеров, ограничение длины
 
 ### Проблемы
