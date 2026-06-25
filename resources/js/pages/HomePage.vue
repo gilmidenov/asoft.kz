@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import ProductCard from '@/components/catalog/ProductCard.vue'
+import BannerSlider from '@/components/ui/BannerSlider.vue'
 import { useCatalogStore } from '@/stores/catalog'
 
 const catalogStore = useCatalogStore()
@@ -27,29 +28,8 @@ onMounted(async () => {
 
 <template>
     <div>
-        <!-- HERO -->
-        <section class="bg-gradient-to-br from-header via-slate-800 to-primary-900 text-white py-20">
-            <div class="container mx-auto px-4 text-center">
-                <h1 class="text-4xl md:text-5xl font-bold mb-5 leading-tight">
-                    Лицензионное программное<br>
-                    <span class="text-primary">обеспечение</span> для бизнеса
-                </h1>
-                <p class="text-gray-300 text-lg mb-10 max-w-2xl mx-auto">
-                    Официальные лицензии Microsoft, Kaspersky, Adobe и других ведущих вендоров.
-                    Мгновенная доставка ключей активации.
-                </p>
-                <div class="flex gap-4 justify-center flex-wrap">
-                    <RouterLink to="/catalog"
-                        class="bg-primary hover:bg-primary-700 text-white font-semibold px-8 py-3 rounded-xl transition-colors">
-                        Перейти в каталог
-                    </RouterLink>
-                    <a href="tel:+77001234567"
-                        class="border border-gray-500 hover:border-white text-white font-semibold px-8 py-3 rounded-xl transition-colors">
-                        Позвонить нам
-                    </a>
-                </div>
-            </div>
-        </section>
+        <!-- БАННЕР-СЛАЙДЕР -->
+        <BannerSlider />
 
         <!-- КАТЕГОРИИ -->
         <section class="py-12 bg-white">

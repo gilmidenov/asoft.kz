@@ -11,6 +11,7 @@ const AccountPage     = () => import('@/pages/AccountPage.vue')
 const FavoritesPage   = () => import('@/pages/FavoritesPage.vue')
 const VendorsPage     = () => import('@/pages/VendorsPage.vue')
 const VendorPage      = () => import('@/pages/VendorPage.vue')
+const CompanyPage     = () => import('@/pages/CompanyPage.vue')
 const NotFoundPage    = () => import('@/pages/NotFoundPage.vue')
 
 const AdminLayout     = () => import('@/pages/admin/AdminLayout.vue')
@@ -19,6 +20,8 @@ const AdminProducts   = () => import('@/pages/admin/ProductsPage.vue')
 const AdminCategories = () => import('@/pages/admin/CategoriesPage.vue')
 const AdminVendors    = () => import('@/pages/admin/VendorsPage.vue')
 const AdminOrders     = () => import('@/pages/admin/OrdersPage.vue')
+const AdminBanners    = () => import('@/pages/admin/BannersPage.vue')
+const AdminPages      = () => import('@/pages/admin/PagesPage.vue')
 
 const routes = [
     { path: '/',                name: 'home',      component: HomePage },
@@ -31,8 +34,9 @@ const routes = [
     { path: '/register',        name: 'register',  component: RegisterPage, meta: { guest: true } },
     { path: '/account',         name: 'account',   component: AccountPage,  meta: { requiresAuth: true } },
     { path: '/favorites',       name: 'favorites', component: FavoritesPage, meta: { requiresAuth: true } },
-    { path: '/vendors',         name: 'vendors',   component: VendorsPage },
-    { path: '/vendors/:slug',   name: 'vendor',    component: VendorPage },
+    { path: '/vendors',         name: 'vendors',       component: VendorsPage },
+    { path: '/vendors/:slug',   name: 'vendor',        component: VendorPage },
+    { path: '/company/:slug',   name: 'company-page',  component: CompanyPage },
     {
         path: '/admin',
         component: AdminLayout,
@@ -43,6 +47,8 @@ const routes = [
             { path: 'categories', name: 'admin-categories', component: AdminCategories },
             { path: 'vendors',    name: 'admin-vendors',    component: AdminVendors },
             { path: 'orders',     name: 'admin-orders',     component: AdminOrders },
+            { path: 'banners',    name: 'admin-banners',    component: AdminBanners },
+            { path: 'pages',      name: 'admin-pages',      component: AdminPages },
         ],
     },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundPage },

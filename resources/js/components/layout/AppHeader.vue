@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useCatalogStore } from '@/stores/catalog'
+import axios from 'axios'
 
 const authStore    = useAuthStore()
 const cartStore    = useCartStore()
@@ -12,8 +13,43 @@ const router       = useRouter()
 
 const searchQuery     = ref('')
 const catalogMenuOpen = ref(false)
+const companyPages    = ref([])
 
-onMounted(() => catalogStore.fetchCategories())
+// ── Карусель разделов компании ────────────────────────────────────
+const navRef   = ref(null)   // ref на прокручиваемый контейнер
+const showPrev = ref(false)  // нужна ли стрелка «назад»
+const showNext = ref(false)  // нужна ли стрелка «вперёд»
+
+// Пересчитываем видимость стрелок при прокрутке
+function updateArrows() {
+    const el = navRef.value
+    if (!el) return
+    showPrev.value = el.scrollLeft > 2
+    showNext.value = el.scrollLeft < el.scrollWidth - el.clientWidth - 2
+}
+
+// Прокручиваем карусель на amount пикселей (плавно)
+function scrollNav(amount) {
+    navRef.value?.scrollBy({ left: amount, behavior: 'smooth' })
+    // Обновляем стрелки после завершения анимации прокрутки (300 мс)
+    setTimeout(updateArrows, 350)
+}
+
+// После загрузки разделов проверяем, нужна ли стрелка вперёд
+watch(companyPages, async () => {
+    await nextTick()
+    updateArrows()
+})
+
+onMounted(async () => {
+    catalogStore.fetchCategories()
+    try {
+        const { data } = await axios.get('/pages')
+        companyPages.value = data
+    } catch {
+        // навигация по разделам не критична
+    }
+})
 
 function handleSearch() {
     if (searchQuery.value.trim()) {
@@ -25,7 +61,7 @@ function handleSearch() {
 <template>
     <header class="sticky top-0 z-50 shadow-md">
 
-        <!-- Верхняя тёмная полоса -->
+        <!-- Верхняя тёмная полоса: лого / телефон / корзина+кабинет -->
         <div class="bg-header text-white">
             <div class="container mx-auto px-4 py-2 flex items-center justify-between text-sm">
 
@@ -79,7 +115,7 @@ function handleSearch() {
             </div>
         </div>
 
-        <!-- Нижняя белая полоса -->
+        <!-- Средняя белая полоса: каталог / поиск / быстрые ссылки -->
         <div class="bg-white border-b border-gray-200">
             <div class="container mx-auto px-4 py-3 flex items-center gap-6">
 
@@ -124,7 +160,73 @@ function handleSearch() {
                 </nav>
             </div>
         </div>
+
+        <!-- Нижняя полоса: карусель разделов компании -->
+        <div v-if="companyPages.length" class="bg-slate-700 border-t border-slate-600">
+            <div class="container mx-auto px-2 flex items-center">
+
+                <!-- Стрелка «назад» — появляется когда есть что прокручивать влево -->
+                <button
+                    v-show="showPrev"
+                    @click="scrollNav(-220)"
+                    class="flex-shrink-0 w-8 h-9 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                    aria-label="Прокрутить назад"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+
+                <!--
+                    Скроллируемый контейнер карусели.
+                    overflow-x-auto разрешает прокрутку JS-кодом (scrollBy),
+                    CSS класс nav-carousel скрывает нативный скроллбар.
+                -->
+                <div
+                    ref="navRef"
+                    class="nav-carousel flex-1 overflow-x-auto"
+                    @scroll="updateArrows"
+                >
+                    <nav class="flex items-center min-w-max">
+                        <RouterLink
+                            v-for="page in companyPages"
+                            :key="page.slug"
+                            :to="{ name: 'company-page', params: { slug: page.slug } }"
+                            class="flex-shrink-0 px-4 py-2.5 text-xs font-medium text-gray-300 hover:text-white hover:bg-slate-600 transition-colors whitespace-nowrap border-b-2 border-transparent hover:border-primary"
+                            active-class="text-white bg-slate-600 border-primary"
+                        >
+                            {{ page.title }}
+                        </RouterLink>
+                    </nav>
+                </div>
+
+                <!-- Стрелка «вперёд» — появляется когда есть что прокручивать вправо -->
+                <button
+                    v-show="showNext"
+                    @click="scrollNav(220)"
+                    class="flex-shrink-0 w-8 h-9 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                    aria-label="Прокрутить вперёд"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+
+            </div>
+        </div>
+
     </header>
 
     <div v-if="catalogMenuOpen" @click="catalogMenuOpen = false" class="fixed inset-0 z-40" />
 </template>
+
+<style scoped>
+/* Скрываем нативный скроллбар карусели во всех браузерах */
+.nav-carousel::-webkit-scrollbar {
+    display: none;
+}
+.nav-carousel {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+</style>

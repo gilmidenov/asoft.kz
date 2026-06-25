@@ -2,12 +2,14 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BannerController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\VendorController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PageController;
 
 // ============================================================
 // ПУБЛИЧНЫЕ маршруты (без авторизации)
@@ -34,6 +36,13 @@ Route::middleware('auth.optional')->group(function () {
     Route::delete('/cart/{id}', [CartController::class, 'destroy']);
     Route::delete('/cart', [CartController::class, 'clear']);
 });
+
+// Баннеры главной страницы
+Route::get('/banners', [BannerController::class, 'index']);
+
+// Разделы компании (О компании, Новости и т.д.)
+Route::get('/pages', [PageController::class, 'index']);
+Route::get('/pages/{slug}', [PageController::class, 'show']);
 
 // Аутентификация
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -76,5 +85,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('products', ProductController::class)->except(['index', 'show']);
         Route::get('/orders', [OrderController::class, 'adminIndex']);
         Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
+
+        // Баннеры
+        Route::get('banners', [BannerController::class, 'adminIndex']);
+        Route::post('banners', [BannerController::class, 'store']);
+        Route::put('banners/{id}', [BannerController::class, 'update']);
+        Route::delete('banners/{id}', [BannerController::class, 'destroy']);
+        Route::post('banners/{id}/image', [BannerController::class, 'uploadImage']);
+
+        // Разделы компании
+        Route::get('pages', [PageController::class, 'adminIndex']);
+        Route::post('pages', [PageController::class, 'storePage']);
+        Route::put('pages/{id}', [PageController::class, 'updatePage']);
+        Route::delete('pages/{id}', [PageController::class, 'destroyPage']);
+        // Элементы раздела
+        Route::get('pages/{id}/items', [PageController::class, 'adminItems']);
+        Route::post('pages/{id}/items', [PageController::class, 'storeItem']);
+        Route::put('items/{id}', [PageController::class, 'updateItem']);
+        Route::delete('items/{id}', [PageController::class, 'destroyItem']);
+        Route::post('items/{id}/file', [PageController::class, 'uploadFile']);
     });
 });

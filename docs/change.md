@@ -1,5 +1,184 @@
 # Журнал изменений
 
+## 2026-06-25 — Исправления: карусель разделов, слайдер баннеров, ограничение длины
+
+### Проблемы
+
+1. **В форме создания раздела не было ограничения на длину названия** — длинное название ломало вёрстку навигационной полосы.
+
+2. **Навигация разделов компании скроллилась горизонтально** (нативный скролл) — выглядело некрасиво.
+
+3. **Баг слайдера**: при добавлении 1 баннера кнопки переключения не появлялись (fallback был выключен при наличии баннеров); кроме того, `<transition-group>` + `v-show` некорректно анимировал переходы.
+
+---
+
+### Решения
+
+#### 1. Ограничение длины названия раздела
+
+**`app/Http/Controllers/Api/PageController.php`:**
+
+Валидация изменена с `max:255` на `max:40` в методах `storePage` и `updatePage`.
+
+**`resources/js/pages/admin/PagesPage.vue`:**
+
+В форме добавлен атрибут `maxlength="40"` и счётчик символов, который подсвечивается оранжевым цветом при превышении 35 символов:
+```html
+<span :class="pageForm.title.length > 35 ? 'text-accent' : 'text-gray-400'">
+    {{ pageForm.title.length }}/40
+</span>
+```
+
+#### 2. Карусель вместо прокрутки
+
+**`resources/js/components/layout/AppHeader.vue`:**
+
+Полностью переработана третья полоса шапки:
+
+- Обёртка `overflow-x-auto` + CSS `scrollbar-width: none` — нативный скроллбар скрыт, JS-прокрутка работает
+- Добавлены стрелки `«` / `»` — появляются динамически через `v-show="showPrev/showNext"`
+- `updateArrows()` — пересчитывает видимость стрелок по `el.scrollLeft / scrollWidth / clientWidth`
+- `scrollNav(±220)` — вызывает `el.scrollBy({ behavior: 'smooth' })`
+- `watch(companyPages, ...)` — после загрузки разделов проверяет нужна ли стрелка вперёд
+- Навигация перенесена ВНУТРЬ `<header class="sticky">` — теперь вся шапка (все 3 полосы) прилипает к верху
+
+#### 3. Исправление слайдера баннеров
+
+**`resources/js/components/ui/BannerSlider.vue`:**
+
+**Проблема 1 — fallback исчезал:**
+```js
+// БЫЛО (неверно): fallback показывался только при 0 баннеров
+const slides = computed(() => banners.value.length ? banners.value : [fallback])
+
+// СТАЛО: fallback всегда первый слайд
+const slides = computed(() => [fallback, ...banners.value])
+```
+
+Теперь: 0 баннеров → [fallback] (без стрелок); 1+ баннер → [fallback, b1, ...] (стрелки появляются).
+
+**Проблема 2 — некорректная анимация:**
+```vue
+<!-- БЫЛО (неверно): transition-group предназначен для элементов входящих/выходящих DOM -->
+<transition-group name="slide-fade" tag="div">
+    <div v-show="idx === current" ...>   <!-- v-show меняет display, не DOM -->
+</transition-group>
+
+<!-- СТАЛО: CSS cross-fade — все слайды в DOM, видимость через opacity -->
+<div v-for="(slide, idx) in slides" :key="idx"
+     :class="idx === current
+         ? 'opacity-100 z-10'
+         : 'opacity-0 z-0 pointer-events-none'"
+     class="absolute inset-0 transition-opacity duration-700">
+```
+
+`pointer-events-none` на невидимых слайдах предотвращает случайные клики насквозь.
+
+---
+
+### Файлы, затронутые исправлениями
+
+| Файл | Что изменено |
+|------|-------------|
+| `app/Http/Controllers/Api/PageController.php` | `max:255` → `max:40` в `storePage` и `updatePage` |
+| `resources/js/pages/admin/PagesPage.vue` | `maxlength="40"` + счётчик символов в форме раздела |
+| `resources/js/components/layout/AppHeader.vue` | Карусель со стрелками; nav перенесён внутрь `<header>` (sticky) |
+| `resources/js/components/ui/BannerSlider.vue` | slides всегда включает fallback; CSS cross-fade вместо transition-group |
+
+---
+
+## 2026-06-25 — Баннер-слайдер, разделы компании в шапке, полная документация
+
+### Задачи
+
+1. В шапку добавлены вкладки разделов компании (О компании, Решения, Разработка, Проекты, Новости, Нам доверяют, Карьера, Сертификаты, Реквизиты).
+2. Статичный hero заменён на рекламный баннер-слайдер (несколько баннеров, меняются каждые 5 секунд или по клику).
+3. Обновлена документация `docs/CODE.md` — описан весь текущий код.
+
+---
+
+### Новые файлы
+
+#### Backend
+
+| Файл | Назначение |
+|------|------------|
+| `database/migrations/2026_06_25_000001_create_banners_table.php` | Таблица баннеров (title, subtitle, button_text, button_url, image, sort_order, is_active) |
+| `database/migrations/2026_06_25_000002_create_pages_table.php` | Таблица разделов компании (title, slug, description, sort_order, is_active) |
+| `database/migrations/2026_06_25_000003_create_page_items_table.php` | Таблица элементов разделов (page_id, title, content, file_path, file_type, sort_order, is_active) |
+| `app/Models/Banner.php` | Eloquent-модель баннера с accessor `image()` → полный URL |
+| `app/Models/Page.php` | Eloquent-модель раздела компании; связи `items()` (только активные) и `allItems()` (все) |
+| `app/Models/PageItem.php` | Eloquent-модель элемента раздела с accessor `filePath()` → полный URL |
+| `app/Http/Controllers/Api/BannerController.php` | CRUD баннеров + загрузка изображения |
+| `app/Http/Controllers/Api/PageController.php` | CRUD разделов и их элементов + загрузка файлов (изображение/PDF) |
+| `database/seeders/PageSeeder.php` | Сидирует 9 разделов компании через `firstOrCreate` (идемпотентно) |
+
+#### Frontend
+
+| Файл | Назначение |
+|------|------------|
+| `resources/js/components/ui/BannerSlider.vue` | Слайдер: автопрокрутка (5 сек), стрелки, точки-индикаторы, пауза на hover, фолбэк если баннеров нет |
+| `resources/js/pages/CompanyPage.vue` | Страница раздела компании: заголовок + мини-каталог элементов + лайтбокс для изображений/PDF |
+| `resources/js/pages/admin/BannersPage.vue` | Admin: CRUD баннеров с загрузкой изображений |
+| `resources/js/pages/admin/PagesPage.vue` | Admin: управление разделами + их элементами (два режима в одном компоненте) |
+
+---
+
+### Изменённые файлы
+
+| Файл | Что изменено |
+|------|-------------|
+| `routes/api.php` | Добавлены маршруты для BannerController и PageController (публичные + admin) |
+| `database/seeders/DatabaseSeeder.php` | Добавлен `PageSeeder::class` в список вызовов |
+| `resources/js/pages/HomePage.vue` | Секция `<section class="...hero...">` заменена на `<BannerSlider />` |
+| `resources/js/components/layout/AppHeader.vue` | Добавлена третья полоса `bg-slate-700` с навигацией по разделам компании; добавлена загрузка `companyPages` через `GET /api/pages` |
+| `resources/js/router/index.js` | Добавлены маршруты `/company/:slug`, `/admin/banners`, `/admin/pages`; импорты `CompanyPage`, `AdminBanners`, `AdminPages` |
+| `resources/js/pages/admin/AdminLayout.vue` | В sidebar добавлена секция «Контент» с ссылками на Баннеры и Разделы |
+
+---
+
+### Как работает баннер-слайдер
+
+1. При монтировании `HomePage.vue` рендерит `<BannerSlider />`.
+2. `BannerSlider.vue` делает `GET /api/banners` — получает активные баннеры.
+3. Если баннеров нет — отображается фолбэк с оригинальным текстом.
+4. Автопрокрутка: `setInterval(next, 5000)`. Таймер останавливается при `@mouseenter` и возобновляется при `@mouseleave`.
+5. Переход между слайдами: `<transition-group name="slide-fade">` с CSS `opacity`.
+6. Кнопка CTA: `<component :is="RouterLink|a">` — динамически выбирает тег по типу URL.
+
+---
+
+### Как работает навигация по разделам
+
+1. `AppHeader.vue` при монтировании запрашивает `GET /api/pages`.
+2. Разделы отрисовываются как `RouterLink` в третьей полосе шапки.
+3. Клик по разделу открывает `/company/:slug`.
+4. `CompanyPage.vue` загружает `GET /api/pages/:slug` — раздел + элементы.
+5. Элементы отображаются сеткой карточек (изображения, PDF, статьи).
+6. Клик по карточке с файлом открывает лайтбокс.
+
+---
+
+### Как добавить баннер (admin)
+
+1. Войти как admin → `/admin/banners`.
+2. Нажать «+ Добавить баннер».
+3. Заполнить заголовок (обязательно), подзаголовок, текст и ссылку кнопки.
+4. Загрузить изображение (JPG/PNG/WebP, до 8 МБ; рекомендуется 1920×600 px).
+5. Установить порядок сортировки и нажать «Сохранить».
+6. Баннер сразу отображается на главной.
+
+### Как добавить контент в раздел (admin)
+
+1. Войти как admin → `/admin/pages`.
+2. Найти нужный раздел → нажать «Контент».
+3. Нажать «+ Добавить элемент».
+4. Заполнить название и текст.
+5. Загрузить файл: изображение (JPG/PNG/WebP) или PDF (до 20 МБ). Тип определяется автоматически.
+6. Нажать «Сохранить». Элемент появится на странице `/company/:slug`.
+
+---
+
 ## 2026-06-23 — Исправление категорий/вендоров в меню и фильтрация по вендору
 
 ### Проблемы
