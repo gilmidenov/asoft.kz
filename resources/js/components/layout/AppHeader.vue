@@ -134,7 +134,7 @@ function handleSearch() {
                         <div
                             v-for="cat in catalogStore.categories"
                             :key="cat.id"
-                            class="relative"
+                            class="relative w-full"
                             @mouseenter="hoveredCat = cat.id"
                             @mouseleave="hoveredCat = null"
                         >

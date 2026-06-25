@@ -54,12 +54,15 @@ watch(() => route.params.slug, (slug) => { if (slug) loadPage(slug) }, { immedia
             </div>
 
             <!-- ── Тип «Раздел»: обложка + текст ────────────────────── -->
-            <div v-if="page.type === 'section'" class="container mx-auto px-4 py-10 max-w-4xl">
-                <img v-if="page.cover_image" :src="page.cover_image" :alt="page.title"
-                    class="w-full max-h-80 object-cover rounded-2xl mb-8 shadow-sm" />
-                <div v-if="page.body" class="text-dark text-base leading-relaxed whitespace-pre-wrap">{{ page.body }}</div>
-                <div v-else-if="!page.cover_image" class="text-center py-20 text-muted">
-                    <p class="text-lg font-medium">Раздел пока пуст</p>
+            <div v-if="page.type === 'section'" class="container mx-auto px-4 py-10">
+                <div class="max-w-3xl mx-auto">
+                    <img v-if="page.cover_image" :src="page.cover_image" :alt="page.title"
+                        class="w-full max-h-80 object-cover rounded-2xl mb-8 shadow-sm" />
+                    <div v-if="page.body"
+                        class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-dark text-base leading-7 whitespace-pre-wrap">{{ page.body }}</div>
+                    <div v-else-if="!page.cover_image" class="text-center py-20 text-muted">
+                        <p class="text-lg font-medium">Раздел пока пуст</p>
+                    </div>
                 </div>
             </div>
 
@@ -100,8 +103,12 @@ watch(() => route.params.slug, (slug) => { if (slug) loadPage(slug) }, { immedia
                         </div>
 
                         <!-- Текстовая карточка (нет файла) -->
-                        <div v-else class="aspect-video flex items-center justify-center bg-primary-50 px-4">
-                            <p class="text-primary font-bold text-center text-sm line-clamp-3">{{ item.title }}</p>
+                        <div v-else class="aspect-video flex flex-col items-center justify-center bg-primary-50 px-4 gap-2">
+                            <svg class="w-8 h-8 text-primary-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <p class="text-primary font-semibold text-center text-xs line-clamp-2">{{ item.title }}</p>
                         </div>
 
                         <!-- Текст карточки -->
@@ -154,17 +161,27 @@ watch(() => route.params.slug, (slug) => { if (slug) loadPage(slug) }, { immedia
                         <!-- Изображение -->
                         <img v-if="detail.file_type === 'image' && detail.file_path"
                             :src="detail.file_path" :alt="detail.title"
-                            class="w-full object-contain max-h-80 bg-gray-50" />
+                            class="w-full object-cover max-h-72 bg-gray-50" />
 
                         <!-- PDF iframe -->
                         <iframe v-else-if="detail.file_type === 'pdf' && detail.file_path"
                             :src="detail.file_path"
-                            class="w-full" style="height: 50vh;" />
+                            class="w-full" style="height: 55vh;" />
 
-                        <!-- Текст (краткое описание + полный текст) -->
-                        <div class="px-6 py-5">
-                            <p v-if="detail.content" class="text-muted text-sm mb-4 leading-relaxed">{{ detail.content }}</p>
-                            <div v-if="detail.body" class="text-dark text-sm leading-relaxed whitespace-pre-wrap border-t border-gray-100 pt-4">{{ detail.body }}</div>
+                        <!-- Нет файла — иконка статьи -->
+                        <div v-else class="flex items-center justify-center bg-primary-50 py-8">
+                            <svg class="w-14 h-14 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+
+                        <!-- Текст: краткое + полное описание -->
+                        <div class="px-6 py-5 space-y-4">
+                            <p v-if="detail.content" class="text-muted text-sm leading-relaxed">{{ detail.content }}</p>
+                            <div v-if="detail.body"
+                                :class="detail.content ? 'border-t border-gray-100 pt-4' : ''"
+                                class="text-dark text-sm leading-7 whitespace-pre-wrap">{{ detail.body }}</div>
                         </div>
                     </div>
 
