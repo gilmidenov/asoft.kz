@@ -65,9 +65,12 @@ function backToPages() {
 
 // ── CRUD разделов ────────────────────────────────────────────────
 function openCreatePage() {
+    const maxSort = pages.value.length
+        ? Math.max(...pages.value.map(p => p.sort_order || 0))
+        : 0
     editPageMode.value  = false
     editingPageId.value = null
-    pageForm.value      = emptyPageForm()
+    pageForm.value      = { ...emptyPageForm(), sort_order: maxSort + 1 }
     errors.value        = {}
     showPageModal.value = true
 }
@@ -86,11 +89,14 @@ async function savePage() {
     try {
         if (editPageMode.value) {
             await axios.put(`/admin/pages/${editingPageId.value}`, pageForm.value)
+            showPageModal.value = false
+            await loadPages()
         } else {
-            await axios.post('/admin/pages', pageForm.value)
+            const { data } = await axios.post('/admin/pages', pageForm.value)
+            showPageModal.value = false
+            await loadPages()
+            await selectPage(data)
         }
-        showPageModal.value = false
-        await loadPages()
     } catch (e) {
         errors.value = e.response?.data?.errors || { general: [e.response?.data?.message || 'Ошибка'] }
     } finally {
@@ -322,15 +328,15 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                     <div>
                         <label class="block text-sm font-medium text-dark mb-1">
                             Название *
-                            <span :class="pageForm.title.length > 35 ? 'text-accent' : 'text-gray-400'" class="ml-2 text-xs font-normal">
-                                {{ pageForm.title.length }}/40
+                            <span :class="pageForm.title.length > 23 ? 'text-accent' : 'text-gray-400'" class="ml-2 text-xs font-normal">
+                                {{ pageForm.title.length }}/30
                             </span>
                         </label>
                         <input
                             v-model="pageForm.title"
                             required
-                            maxlength="40"
-                            placeholder="До 40 символов — отображается в шапке сайта"
+                            maxlength="30"
+                            placeholder="До 30 символов — отображается в шапке сайта"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
                         />
                         <p class="text-xs text-muted mt-1">Название видно в навигационной полосе — чем короче, тем лучше.</p>

@@ -129,15 +129,23 @@ function handleSearch() {
                     </button>
 
                     <div v-if="catalogMenuOpen"
-                        class="absolute top-full left-0 mt-1 w-64 bg-white shadow-xl rounded-lg border border-gray-100 py-2 z-50">
-                        <RouterLink
-                            v-for="cat in catalogStore.categories"
-                            :key="cat.id"
-                            :to="{ name: 'category', params: { slug: cat.slug } }"
-                            @click="catalogMenuOpen = false"
-                            class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-dark hover:text-primary transition-colors">
-                            {{ cat.name }}
-                        </RouterLink>
+                        class="absolute top-full left-0 mt-1 w-72 bg-white shadow-xl rounded-lg border border-gray-100 py-2 z-50 max-h-96 overflow-y-auto">
+                        <template v-for="cat in catalogStore.categories" :key="cat.id">
+                            <RouterLink
+                                :to="{ name: 'category', params: { slug: cat.slug } }"
+                                @click="catalogMenuOpen = false"
+                                class="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-dark hover:text-primary transition-colors text-sm font-medium">
+                                {{ cat.name }}
+                            </RouterLink>
+                            <RouterLink
+                                v-for="child in (cat.children || [])"
+                                :key="child.id"
+                                :to="{ name: 'category', params: { slug: child.slug } }"
+                                @click="catalogMenuOpen = false"
+                                class="flex items-center gap-2 px-4 py-1.5 pl-8 hover:bg-gray-50 text-muted hover:text-primary transition-colors text-xs">
+                                └ {{ child.name }}
+                            </RouterLink>
+                        </template>
                     </div>
                 </div>
 

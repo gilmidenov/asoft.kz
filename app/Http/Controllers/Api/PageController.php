@@ -40,7 +40,7 @@ class PageController extends Controller
     public function storePage(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'title'       => 'required|string|max:40',   // 40 символов — ограничение шапки сайта
+            'title'       => 'required|string|max:30',
             'description' => 'nullable|string',
             'sort_order'  => 'integer|min:0',
             'is_active'   => 'boolean',
@@ -56,7 +56,7 @@ class PageController extends Controller
         $page = Page::findOrFail($id);
 
         $data = $request->validate([
-            'title'       => 'sometimes|string|max:40',  // 40 символов — ограничение шапки сайта
+            'title'       => 'sometimes|string|max:30',
             'description' => 'nullable|string',
             'sort_order'  => 'integer|min:0',
             'is_active'   => 'boolean',
