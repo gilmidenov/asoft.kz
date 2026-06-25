@@ -56,7 +56,7 @@ onMounted(async () => {
             <div v-else class="absolute inset-0 bg-gradient-to-br from-header via-slate-800 to-primary-900" />
 
             <div class="relative z-10 text-white text-center px-4 py-20 w-full max-w-4xl mx-auto">
-                <h1 class="text-4xl md:text-5xl font-bold mb-5 leading-tight">
+                <h1 v-if="slide.title" class="text-4xl md:text-5xl font-bold mb-5 leading-tight">
                     {{ slide.title }}
                 </h1>
                 <p v-if="slide.subtitle" class="text-gray-300 text-lg mb-10 max-w-2xl mx-auto">

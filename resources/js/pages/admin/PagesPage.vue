@@ -26,9 +26,13 @@ const filePreview   = ref(null)
 const currentFile   = ref(null)
 const selectedFile  = ref(null)
 
-const coverRef     = ref(null)
-const coverFile    = ref(null)
-const coverPreview = ref(null)
+const coverRef      = ref(null)
+const coverFile     = ref(null)
+const coverPreview  = ref(null)
+const originalCover = ref(null)
+const deletingCover = ref(false)
+
+const deletingFile  = ref(false)
 
 // ── Формы ────────────────────────────────────────────────────────
 const emptyPageForm = () => ({ title: '', description: '', type: 'catalog', body: '', sort_order: 0, is_active: true })
@@ -78,6 +82,8 @@ function openCreatePage() {
     errors.value        = {}
     coverFile.value     = null
     coverPreview.value  = null
+    originalCover.value = null
+    deletingCover.value = false
     showPageModal.value = true
 }
 
@@ -92,9 +98,11 @@ function openEditPage(page) {
         sort_order:  page.sort_order || 0,
         is_active:   !!page.is_active,
     }
-    errors.value       = {}
-    coverFile.value    = null
-    coverPreview.value = page.cover_image || null
+    errors.value        = {}
+    coverFile.value     = null
+    coverPreview.value  = page.cover_image || null
+    originalCover.value = page.cover_image || null
+    deletingCover.value = false
     showPageModal.value = true
 }
 
@@ -111,8 +119,10 @@ async function savePage() {
             savedId = data.id
         }
 
-        // Загружаем обложку для раздела-типа "section"
-        if (coverFile.value) {
+        // Обложка для раздела-типа "section"
+        if (deletingCover.value && editPageMode.value) {
+            await axios.delete(`/admin/pages/${savedId}/cover`)
+        } else if (coverFile.value) {
             const fd = new FormData()
             fd.append('image', coverFile.value)
             await axios.post(`/admin/pages/${savedId}/cover`, fd, {
@@ -154,6 +164,7 @@ function openCreateItem() {
     editingItemId.value = null
     itemForm.value      = emptyItemForm()
     errors.value        = {}
+    deletingFile.value  = false
     resetFile()
     showItemModal.value = true
 }
@@ -169,9 +180,10 @@ function openEditItem(item) {
         sort_order: item.sort_order || 0,
         is_active:  !!item.is_active,
     }
-    errors.value      = {}
+    errors.value       = {}
+    deletingFile.value = false
     resetFile()
-    currentFile.value = item.file_path || null
+    currentFile.value  = item.file_path || null
     showItemModal.value = true
 }
 
@@ -201,7 +213,9 @@ async function saveItem() {
             savedId = data.id
         }
 
-        if (selectedFile.value) {
+        if (deletingFile.value && editItemMode.value) {
+            await axios.delete(`/admin/items/${savedId}/file`)
+        } else if (selectedFile.value) {
             const fd = new FormData()
             fd.append('file', selectedFile.value)
             await axios.post(`/admin/items/${savedId}/file`, fd, {
@@ -423,9 +437,27 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                     <!-- Обложка (только для section) -->
                     <div v-if="pageForm.type === 'section'">
                         <label class="block text-sm font-medium text-dark mb-2">Изображение обложки</label>
-                        <img v-if="coverPreview" :src="coverPreview" class="w-full h-36 object-cover rounded-lg border border-gray-200 mb-2" />
+
+                        <!-- Текущая обложка -->
+                        <div v-if="coverPreview && !deletingCover" class="mb-2">
+                            <img :src="coverPreview" class="w-full h-36 object-cover rounded-lg border border-gray-200 mb-2" />
+                            <button type="button" @click="deletingCover = true; coverPreview = null; coverFile = null"
+                                class="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Удалить обложку
+                            </button>
+                        </div>
+
+                        <!-- Помечено к удалению -->
+                        <div v-if="deletingCover" class="mb-2 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                            <span class="text-xs text-red-600">Обложка будет удалена при сохранении</span>
+                            <button type="button" @click="deletingCover = false; coverPreview = originalCover" class="text-xs text-red-400 hover:text-red-600 ml-auto">Отменить</button>
+                        </div>
+
                         <label class="flex items-center justify-center w-full h-12 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors bg-gray-50">
-                            <span class="text-xs text-muted">{{ coverPreview ? 'Заменить изображение' : 'Загрузить обложку (JPG, PNG, WebP)' }}</span>
+                            <span class="text-xs text-muted">{{ coverPreview ? 'Заменить обложку' : 'Загрузить обложку (JPG, PNG, WebP)' }}</span>
                             <input ref="coverRef" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onCoverPicked" />
                         </label>
                     </div>
@@ -490,14 +522,27 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                         <label class="block text-sm font-medium text-dark mb-2">Файл (изображение или PDF)</label>
 
                         <!-- Текущий файл -->
-                        <div v-if="currentFile && !filePreview" class="mb-3">
-                            <img v-if="itemForm.file_type === 'image'" :src="currentFile" class="w-32 h-20 object-cover rounded-lg border border-gray-200" />
-                            <div v-else class="flex items-center gap-2 text-xs text-muted bg-red-50 border border-red-100 rounded-lg p-3">
+                        <div v-if="currentFile && !filePreview && !deletingFile" class="mb-3">
+                            <img v-if="itemForm.file_type === 'image'" :src="currentFile" class="w-32 h-20 object-cover rounded-lg border border-gray-200 mb-2" />
+                            <div v-else class="flex items-center gap-2 text-xs text-muted bg-red-50 border border-red-100 rounded-lg p-3 mb-2">
                                 <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5z"/>
                                 </svg>
                                 Текущий PDF документ
                             </div>
+                            <button type="button" @click="deletingFile = true; currentFile = null"
+                                class="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Удалить файл
+                            </button>
+                        </div>
+
+                        <!-- Помечено к удалению -->
+                        <div v-if="deletingFile" class="mb-3 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                            <span class="text-xs text-red-600">Файл будет удалён при сохранении</span>
+                            <button type="button" @click="deletingFile = false" class="text-xs text-red-400 hover:text-red-600 ml-auto">Отменить</button>
                         </div>
 
                         <!-- Предпросмотр нового изображения -->

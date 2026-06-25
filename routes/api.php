@@ -92,6 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('banners/{id}', [BannerController::class, 'update']);
         Route::delete('banners/{id}', [BannerController::class, 'destroy']);
         Route::post('banners/{id}/image', [BannerController::class, 'uploadImage']);
+        Route::delete('banners/{id}/image', [BannerController::class, 'deleteImage']);
 
         // Разделы компании
         Route::get('pages', [PageController::class, 'adminIndex']);
@@ -99,11 +100,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('pages/{id}', [PageController::class, 'updatePage']);
         Route::delete('pages/{id}', [PageController::class, 'destroyPage']);
         Route::post('pages/{id}/cover', [PageController::class, 'uploadCover']);
+        Route::delete('pages/{id}/cover', [PageController::class, 'deleteCover']);
         // Элементы раздела
         Route::get('pages/{id}/items', [PageController::class, 'adminItems']);
         Route::post('pages/{id}/items', [PageController::class, 'storeItem']);
         Route::put('items/{id}', [PageController::class, 'updateItem']);
         Route::delete('items/{id}', [PageController::class, 'destroyItem']);
         Route::post('items/{id}/file', [PageController::class, 'uploadFile']);
+        Route::delete('items/{id}/file', [PageController::class, 'deleteItemFile']);
     });
 });

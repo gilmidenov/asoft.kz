@@ -75,6 +75,34 @@ class PageController extends Controller
         return response()->json($page->fresh());
     }
 
+    public function deleteCover(int $id): JsonResponse
+    {
+        $page = Page::findOrFail($id);
+
+        $raw = $page->getRawOriginal('cover_image');
+        if ($raw && !str_starts_with($raw, 'http')) {
+            Storage::disk('public')->delete($raw);
+        }
+
+        $page->update(['cover_image' => null]);
+
+        return response()->json($page->fresh());
+    }
+
+    public function deleteItemFile(int $id): JsonResponse
+    {
+        $item = PageItem::findOrFail($id);
+
+        $raw = $item->getRawOriginal('file_path');
+        if ($raw && !str_starts_with($raw, 'http')) {
+            Storage::disk('public')->delete($raw);
+        }
+
+        $item->update(['file_path' => null, 'file_type' => 'text']);
+
+        return response()->json($item->fresh());
+    }
+
     public function uploadCover(Request $request, int $id): JsonResponse
     {
         $page = Page::findOrFail($id);

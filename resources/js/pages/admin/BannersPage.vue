@@ -10,10 +10,12 @@ const saving       = ref(false)
 const errors       = ref({})
 const editingId    = ref(null)
 
-const imageFile    = ref(null)
-const imagePreview = ref(null)
-const currentImage = ref(null)
+const imageFile     = ref(null)
+const imagePreview  = ref(null)
+const currentImage  = ref(null)
+const originalImage = ref(null)
 const imageInputRef = ref(null)
+const deletingImage = ref(false)
 
 const emptyForm = () => ({
     title:       '',
@@ -39,10 +41,24 @@ async function load() {
 onMounted(load)
 
 function resetImageState() {
-    imageFile.value    = null
-    imagePreview.value = null
-    currentImage.value = null
+    imageFile.value     = null
+    imagePreview.value  = null
+    currentImage.value  = null
+    originalImage.value = null
+    deletingImage.value = false
     if (imageInputRef.value) imageInputRef.value.value = ''
+}
+
+function removeCurrentImage() {
+    deletingImage.value = true
+    currentImage.value  = null
+    imageFile.value     = null
+    imagePreview.value  = null
+}
+
+function undoRemoveImage() {
+    deletingImage.value = false
+    currentImage.value  = originalImage.value
 }
 
 function openCreate() {
@@ -65,10 +81,13 @@ function openEdit(banner) {
         sort_order:  banner.sort_order || 0,
         is_active:   !!banner.is_active,
     }
-    errors.value       = {}
-    currentImage.value = banner.image || null
-    resetImageState()
-    currentImage.value = banner.image || null
+    errors.value        = {}
+    currentImage.value  = banner.image || null
+    originalImage.value = banner.image || null
+    deletingImage.value = false
+    imageFile.value     = null
+    imagePreview.value  = null
+    if (imageInputRef.value) imageInputRef.value.value = ''
     showModal.value    = true
 }
 
@@ -98,7 +117,9 @@ async function save() {
             savedId = data.id
         }
 
-        if (imageFile.value) {
+        if (deletingImage.value && editMode.value) {
+            await axios.delete(`/admin/banners/${savedId}/image`)
+        } else if (imageFile.value) {
             const fd = new FormData()
             fd.append('image', imageFile.value)
             await axios.post(`/admin/banners/${savedId}/image`, fd, {
@@ -155,7 +176,7 @@ async function remove(id) {
                             </div>
                         </td>
                         <td class="px-6 py-4">
-                            <p class="font-medium text-dark">{{ banner.title }}</p>
+                            <p class="font-medium text-dark">{{ banner.title || '—' }}</p>
                             <p v-if="banner.subtitle" class="text-muted text-xs mt-0.5 line-clamp-1">{{ banner.subtitle }}</p>
                         </td>
                         <td class="px-6 py-4 text-muted text-xs">
@@ -193,22 +214,43 @@ async function remove(id) {
                     <div>
                         <label class="block text-sm font-medium text-dark mb-2">Изображение баннера</label>
                         <p class="text-xs text-muted mb-2">Рекомендуемый размер: 1920×600 px. Без изображения — используется градиентный фон.</p>
+
+                        <!-- Текущее изображение -->
                         <div v-if="currentImage && !imagePreview" class="mb-3">
-                            <img :src="currentImage" class="w-full h-32 object-cover rounded-lg border border-gray-200" />
+                            <img :src="currentImage" class="w-full h-32 object-cover rounded-lg border border-gray-200 mb-2" />
+                            <button type="button" @click="removeCurrentImage"
+                                class="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Удалить изображение
+                            </button>
                         </div>
+
+                        <!-- Помечено к удалению -->
+                        <div v-if="deletingImage" class="mb-3 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                            <span class="text-xs text-red-600">Изображение будет удалено при сохранении</span>
+                            <button type="button" @click="undoRemoveImage" class="text-xs text-red-400 hover:text-red-600 ml-auto">Отменить</button>
+                        </div>
+
+                        <!-- Превью нового файла -->
                         <div v-if="imagePreview" class="mb-3 flex items-start gap-3">
                             <img :src="imagePreview" class="w-full h-32 object-cover rounded-lg border border-gray-200" />
                             <button type="button" @click="clearImagePick" class="text-xs text-red-500 hover:underline mt-1 flex-shrink-0">Отменить</button>
                         </div>
-                        <label class="flex items-center justify-center w-full h-14 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors bg-gray-50">
-                            <span class="text-xs text-muted">{{ imagePreview ? 'Выбрать другое' : 'Нажмите для загрузки' }}</span>
+
+                        <label class="flex items-center justify-center w-full h-12 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors bg-gray-50">
+                            <span class="text-xs text-muted">{{ imagePreview ? 'Выбрать другое' : currentImage ? 'Заменить изображение' : 'Нажмите для загрузки' }}</span>
                             <input ref="imageInputRef" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" @change="onImagePicked" />
                         </label>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-dark mb-1">Заголовок *</label>
-                        <input v-model="form.title" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" placeholder="Лицензионное ПО для бизнеса" />
+                        <label class="block text-sm font-medium text-dark mb-1">
+                            Заголовок
+                            <span class="text-gray-400 font-normal text-xs ml-1">(необязательно — если на картинке уже есть текст)</span>
+                        </label>
+                        <input v-model="form.title" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" placeholder="Лицензионное ПО для бизнеса" />
                         <p v-if="errors.title" class="text-red-500 text-xs mt-1">{{ errors.title[0] }}</p>
                     </div>
 

@@ -30,7 +30,7 @@ class BannerController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'title'       => 'required|string|max:255',
+            'title'       => 'nullable|string|max:255',
             'subtitle'    => 'nullable|string|max:500',
             'button_text' => 'nullable|string|max:100',
             'button_url'  => 'nullable|string|max:500',
@@ -46,7 +46,7 @@ class BannerController extends Controller
         $banner = Banner::findOrFail($id);
 
         $data = $request->validate([
-            'title'       => 'sometimes|string|max:255',
+            'title'       => 'nullable|string|max:255',
             'subtitle'    => 'nullable|string|max:500',
             'button_text' => 'nullable|string|max:100',
             'button_url'  => 'nullable|string|max:500',
@@ -55,6 +55,20 @@ class BannerController extends Controller
         ]);
 
         $banner->update($data);
+
+        return response()->json($banner->fresh());
+    }
+
+    public function deleteImage(int $id): JsonResponse
+    {
+        $banner = Banner::findOrFail($id);
+
+        $raw = $banner->getRawOriginal('image');
+        if ($raw && !str_starts_with($raw, 'http')) {
+            Storage::disk('public')->delete($raw);
+        }
+
+        $banner->update(['image' => null]);
 
         return response()->json($banner->fresh());
     }
