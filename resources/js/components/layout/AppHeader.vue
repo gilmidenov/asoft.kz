@@ -130,7 +130,7 @@ function handleSearch() {
                     </button>
 
                     <div v-if="catalogMenuOpen"
-                        class="absolute top-full left-0 mt-1 w-64 bg-white shadow-xl rounded-lg border border-gray-100 py-2 z-50 max-h-[80vh] overflow-y-auto">
+                        class="absolute top-full left-0 mt-1 w-64 bg-white shadow-xl rounded-lg border border-gray-100 py-2 z-50">
                         <div
                             v-for="cat in catalogStore.categories"
                             :key="cat.id"

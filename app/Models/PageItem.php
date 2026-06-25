@@ -13,6 +13,7 @@ class PageItem extends Model
         'page_id',
         'title',
         'content',
+        'body',
         'file_path',
         'file_type',
         'sort_order',

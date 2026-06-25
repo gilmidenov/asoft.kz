@@ -32,7 +32,7 @@ const coverPreview = ref(null)
 
 // ── Формы ────────────────────────────────────────────────────────
 const emptyPageForm = () => ({ title: '', description: '', type: 'catalog', body: '', sort_order: 0, is_active: true })
-const emptyItemForm = () => ({ title: '', content: '', file_type: 'text', sort_order: 0, is_active: true })
+const emptyItemForm = () => ({ title: '', content: '', body: '', file_type: 'text', sort_order: 0, is_active: true })
 const pageForm = ref(emptyPageForm())
 const itemForm = ref(emptyItemForm())
 
@@ -164,6 +164,7 @@ function openEditItem(item) {
     itemForm.value = {
         title:      item.title,
         content:    item.content || '',
+        body:       item.body || '',
         file_type:  item.file_type || 'text',
         sort_order: item.sort_order || 0,
         is_active:  !!item.is_active,
@@ -471,10 +472,17 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-dark mb-1">Текст / описание</label>
-                        <textarea v-model="itemForm.content" rows="3"
+                        <label class="block text-sm font-medium text-dark mb-1">Краткое описание</label>
+                        <textarea v-model="itemForm.content" rows="2"
                             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
-                            placeholder="Краткое описание, аннотация статьи..."></textarea>
+                            placeholder="Краткий анонс, который виден на карточке..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-dark mb-1">Описание <span class="text-gray-400 font-normal text-xs">(виден при открытии элемента)</span></label>
+                        <textarea v-model="itemForm.body" rows="6"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                            placeholder="Полный текст: статья, описание документа, подробности..."></textarea>
                     </div>
 
                     <!-- Файл (изображение или PDF) -->

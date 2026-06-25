@@ -119,6 +119,7 @@ class PageController extends Controller
         $data = $request->validate([
             'title'      => 'required|string|max:255',
             'content'    => 'nullable|string',
+            'body'       => 'nullable|string',
             'file_type'  => 'in:image,pdf,text',
             'sort_order' => 'integer|min:0',
             'is_active'  => 'boolean',
@@ -138,6 +139,7 @@ class PageController extends Controller
         $data = $request->validate([
             'title'      => 'sometimes|string|max:255',
             'content'    => 'nullable|string',
+            'body'       => 'nullable|string',
             'file_type'  => 'in:image,pdf,text',
             'sort_order' => 'integer|min:0',
             'is_active'  => 'boolean',

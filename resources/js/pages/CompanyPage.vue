@@ -8,10 +8,10 @@ const page    = ref(null)
 const loading = ref(false)
 const error   = ref(false)
 
-// ── Просмотр PDF или изображения в лайтбоксе ────────────────────
-const lightbox      = ref(null)   // { type: 'pdf'|'image', url, title }
-const openLightbox  = (item) => { lightbox.value = { type: item.file_type, url: item.file_path, title: item.title } }
-const closeLightbox = () => { lightbox.value = null }
+// ── Детальный просмотр элемента ─────────────────────────────────
+const detail      = ref(null)   // выбранный item
+const openDetail  = (item) => { detail.value = item }
+const closeDetail = () => { detail.value = null }
 
 async function loadPage(slug) {
     loading.value = true
@@ -27,7 +27,6 @@ async function loadPage(slug) {
     }
 }
 
-// Перезагрузка при переходе между разделами через ту же компоненту
 watch(() => route.params.slug, (slug) => { if (slug) loadPage(slug) }, { immediate: true })
 </script>
 
@@ -77,13 +76,13 @@ watch(() => route.params.slug, (slug) => { if (slug) loadPage(slug) }, { immedia
                     <p class="text-sm mt-1">Контент будет добавлен в ближайшее время.</p>
                 </div>
 
-                <!-- Сетка карточек -->
+                <!-- Сетка карточек — все кликабельны -->
                 <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
                     <div
                         v-for="item in page.items"
                         :key="item.id"
                         class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-primary/30 transition-all group cursor-pointer"
-                        @click="item.file_path ? openLightbox(item) : null"
+                        @click="openDetail(item)"
                     >
                         <!-- Превью изображения -->
                         <div v-if="item.file_type === 'image' && item.file_path"
@@ -110,28 +109,19 @@ watch(() => route.params.slug, (slug) => { if (slug) loadPage(slug) }, { immedia
                             <h3 class="font-semibold text-dark text-sm leading-snug mb-1 line-clamp-2 group-hover:text-primary transition-colors">
                                 {{ item.title }}
                             </h3>
-                            <p v-if="item.content" class="text-muted text-xs leading-relaxed line-clamp-3">
+                            <p v-if="item.content" class="text-muted text-xs leading-relaxed line-clamp-2">
                                 {{ item.content }}
                             </p>
 
-                            <!-- Метка типа -->
                             <div class="mt-3 flex items-center justify-between">
                                 <span :class="{
                                     'bg-blue-100 text-blue-700':  item.file_type === 'image',
                                     'bg-red-100 text-red-700':    item.file_type === 'pdf',
                                     'bg-gray-100 text-gray-600':  item.file_type === 'text',
                                 }" class="text-xs font-medium px-2 py-0.5 rounded-full">
-                                    {{ item.file_type === 'image' ? 'Изображение' : item.file_type === 'pdf' ? 'PDF документ' : 'Статья' }}
+                                    {{ item.file_type === 'image' ? 'Изображение' : item.file_type === 'pdf' ? 'PDF' : 'Статья' }}
                                 </span>
-
-                                <span v-if="item.file_path && item.file_type === 'pdf'"
-                                    class="text-xs text-primary font-medium">
-                                    Открыть →
-                                </span>
-                                <span v-else-if="item.file_path && item.file_type === 'image'"
-                                    class="text-xs text-primary font-medium">
-                                    Просмотр →
-                                </span>
+                                <span class="text-xs text-primary font-medium">Открыть →</span>
                             </div>
                         </div>
                     </div>
@@ -139,27 +129,49 @@ watch(() => route.params.slug, (slug) => { if (slug) loadPage(slug) }, { immedia
             </div>
         </template>
 
-        <!-- Лайтбокс — просмотр изображения / PDF -->
+        <!-- ── Модал детального просмотра элемента ────────────────── -->
         <Teleport to="body">
-            <div v-if="lightbox" class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" @click.self="closeLightbox">
-                <div class="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl overflow-hidden flex flex-col">
-                    <!-- Заголовок лайтбокса -->
-                    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-                        <h3 class="font-semibold text-dark truncate">{{ lightbox.title }}</h3>
-                        <button @click="closeLightbox" class="text-muted hover:text-dark text-2xl leading-none">&times;</button>
+            <div v-if="detail" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" @click.self="closeDetail">
+                <div class="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+
+                    <!-- Шапка -->
+                    <div class="flex items-start justify-between px-6 py-4 border-b border-gray-100">
+                        <div class="flex-1 pr-4">
+                            <span :class="{
+                                'bg-blue-100 text-blue-700':  detail.file_type === 'image',
+                                'bg-red-100 text-red-700':    detail.file_type === 'pdf',
+                                'bg-gray-100 text-gray-600':  detail.file_type === 'text',
+                            }" class="text-xs font-medium px-2 py-0.5 rounded-full mb-2 inline-block">
+                                {{ detail.file_type === 'image' ? 'Изображение' : detail.file_type === 'pdf' ? 'PDF документ' : 'Статья' }}
+                            </span>
+                            <h3 class="font-bold text-dark text-lg leading-snug">{{ detail.title }}</h3>
+                        </div>
+                        <button @click="closeDetail" class="text-muted hover:text-dark text-2xl leading-none flex-shrink-0">&times;</button>
                     </div>
 
-                    <!-- Контент -->
-                    <div class="flex-1 overflow-auto">
-                        <img v-if="lightbox.type === 'image'" :src="lightbox.url" :alt="lightbox.title"
-                            class="w-full h-auto object-contain" />
-                        <iframe v-else-if="lightbox.type === 'pdf'" :src="lightbox.url"
-                            class="w-full" style="height: 75vh;" />
+                    <!-- Контент с прокруткой -->
+                    <div class="flex-1 overflow-y-auto">
+                        <!-- Изображение -->
+                        <img v-if="detail.file_type === 'image' && detail.file_path"
+                            :src="detail.file_path" :alt="detail.title"
+                            class="w-full object-contain max-h-80 bg-gray-50" />
+
+                        <!-- PDF iframe -->
+                        <iframe v-else-if="detail.file_type === 'pdf' && detail.file_path"
+                            :src="detail.file_path"
+                            class="w-full" style="height: 50vh;" />
+
+                        <!-- Текст (краткое описание + полный текст) -->
+                        <div class="px-6 py-5">
+                            <p v-if="detail.content" class="text-muted text-sm mb-4 leading-relaxed">{{ detail.content }}</p>
+                            <div v-if="detail.body" class="text-dark text-sm leading-relaxed whitespace-pre-wrap border-t border-gray-100 pt-4">{{ detail.body }}</div>
+                        </div>
                     </div>
 
-                    <!-- Скачать PDF -->
-                    <div v-if="lightbox.type === 'pdf'" class="px-5 py-3 border-t border-gray-100 flex justify-end">
-                        <a :href="lightbox.url" target="_blank" download
+                    <!-- Подвал с кнопкой скачать для PDF -->
+                    <div v-if="detail.file_type === 'pdf' && detail.file_path"
+                        class="px-6 py-3 border-t border-gray-100 flex justify-end bg-gray-50">
+                        <a :href="detail.file_path" target="_blank" download
                             class="text-sm text-primary font-medium hover:underline">
                             Скачать PDF
                         </a>
