@@ -37,8 +37,8 @@ function handleSearch() {
                     </div>
                 </RouterLink>
 
-                <a href="tel:+77001234567" class="text-gray-300 hover:text-white transition-colors">
-                    +7 (700) 123-45-67
+                <a href="tel:+77075973777" class="text-gray-300 hover:text-white transition-colors">
+                    +7 (707) 597-37-77
                 </a>
 
                 <div class="flex items-center gap-4">

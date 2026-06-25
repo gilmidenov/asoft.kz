@@ -8,7 +8,7 @@
                         <span class="font-bold">Atlas Software</span>
                     </div>
                     <p class="text-gray-400 text-sm leading-relaxed">Интернет-магазин лицензионного программного обеспечения в Казахстане</p>
-                    <p class="text-gray-400 text-sm mt-3">+7 (700) 123-45-67</p>
+                    <p class="text-gray-400 text-sm mt-3">+7 (707) 597-37-77</p>
                     <p class="text-gray-400 text-sm">info@asoft.kz</p>
                 </div>
                 <div>
@@ -31,7 +31,7 @@
                 </div>
                 <div>
                     <h4 class="font-semibold mb-4">Адрес</h4>
-                    <p class="text-gray-400 text-sm">Казахстан, Алматы</p>
+                    <p class="text-gray-400 text-sm">Астана, пр.Мангилик Ел, 38.</p>
                     <p class="text-gray-400 text-sm mt-4 font-medium">Время работы:</p>
                     <p class="text-gray-400 text-sm">Пн-Пт: 9:00 – 18:00</p>
                     <p class="text-gray-400 text-sm">Сб: 10:00 – 15:00</p>
