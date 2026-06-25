@@ -1,8 +1,25 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
+import axios from 'axios'
+
+const companyPages = ref([])
+
+onMounted(async () => {
+    try {
+        const { data } = await axios.get('/pages')
+        companyPages.value = data
+    } catch {
+        // не критично
+    }
+})
+</script>
+
 <template>
     <footer class="bg-header text-white mt-16">
         <div class="container mx-auto px-4 py-10">
-            <div class="grid md:grid-cols-4 gap-8">
-                <div>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+                <div class="col-span-2 md:col-span-3 lg:col-span-1">
                     <div class="flex items-center gap-2 mb-4">
                         <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold">A</div>
                         <span class="font-bold">Atlas Software</span>
@@ -18,6 +35,18 @@
                         <li><RouterLink :to="{ name: 'catalog', query: { is_hit: 1 } }" class="hover:text-white transition-colors">Хиты продаж</RouterLink></li>
                         <li><RouterLink :to="{ name: 'catalog', query: { is_new: 1 } }" class="hover:text-white transition-colors">Новинки</RouterLink></li>
                         <li><RouterLink to="/vendors" class="hover:text-white transition-colors">Вендоры</RouterLink></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">О компании</h4>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li v-for="page in companyPages" :key="page.slug">
+                            <RouterLink
+                                :to="{ name: 'company-page', params: { slug: page.slug } }"
+                                class="hover:text-white transition-colors">
+                                {{ page.title }}
+                            </RouterLink>
+                        </li>
                     </ul>
                 </div>
                 <div>
