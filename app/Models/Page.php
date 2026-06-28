@@ -18,11 +18,13 @@ class Page extends Model
         'cover_image',
         'sort_order',
         'is_active',
+        'show_in_nav',
     ];
 
     protected $casts = [
-        'is_active'  => 'boolean',
-        'sort_order' => 'integer',
+        'is_active'   => 'boolean',
+        'show_in_nav' => 'boolean',
+        'sort_order'  => 'integer',
     ];
 
     protected function coverImage(): Attribute

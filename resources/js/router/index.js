@@ -12,6 +12,7 @@ const FavoritesPage   = () => import('@/pages/FavoritesPage.vue')
 const VendorsPage     = () => import('@/pages/VendorsPage.vue')
 const VendorPage      = () => import('@/pages/VendorPage.vue')
 const CompanyPage     = () => import('@/pages/CompanyPage.vue')
+const WebDevPage      = () => import('@/pages/WebDevPage.vue')
 const NotFoundPage    = () => import('@/pages/NotFoundPage.vue')
 
 const AdminLayout     = () => import('@/pages/admin/AdminLayout.vue')
@@ -36,7 +37,8 @@ const routes = [
     { path: '/favorites',       name: 'favorites', component: FavoritesPage, meta: { requiresAuth: true } },
     { path: '/vendors',         name: 'vendors',       component: VendorsPage },
     { path: '/vendors/:slug',   name: 'vendor',        component: VendorPage },
-    { path: '/company/:slug',   name: 'company-page',  component: CompanyPage },
+    { path: '/company/veb-razrabotka', name: 'web-dev',      component: WebDevPage },
+    { path: '/company/:slug',          name: 'company-page', component: CompanyPage },
     {
         path: '/admin',
         component: AdminLayout,

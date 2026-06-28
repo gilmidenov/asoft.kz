@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 import axios from 'axios'
 
 const route   = useRoute()
@@ -63,6 +63,62 @@ watch(() => route.params.slug, (slug) => { if (slug) loadPage(slug) }, { immedia
                     <div v-else-if="!page.cover_image" class="text-center py-20 text-muted">
                         <p class="text-lg font-medium">Раздел пока пуст</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- ── Раздел «Разработка»: хаб подразделов ─────────────── -->
+            <div v-else-if="page.slug === 'development'" class="container mx-auto px-4 py-12">
+                <h2 class="text-xl font-bold text-dark mb-2">Направления разработки</h2>
+                <p class="text-muted text-sm mb-8">Выберите направление, чтобы узнать подробнее об услугах</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+                    <!-- Веб-разработка -->
+                    <RouterLink to="/company/veb-razrabotka"
+                        class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/30 transition-all group flex flex-col">
+                        <div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                            <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-bold text-dark mb-2 group-hover:text-primary transition-colors">Веб-разработка</h3>
+                        <p class="text-muted text-sm leading-relaxed flex-1">
+                            Корпоративные сайты, интернет-магазины, лендинги и веб-сервисы любой сложности
+                        </p>
+                        <div class="mt-4 flex items-center gap-1.5 text-primary text-sm font-medium">
+                            <span>Подробнее</span>
+                            <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                            </svg>
+                        </div>
+                    </RouterLink>
+
+                    <!-- Мобильная разработка (coming soon) -->
+                    <div class="bg-white rounded-2xl p-6 border border-dashed border-gray-200 flex flex-col opacity-60 select-none">
+                        <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-bold text-gray-500 mb-2">Мобильная разработка</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed flex-1">iOS и Android приложения</p>
+                        <span class="mt-4 text-xs text-gray-400 font-medium bg-gray-100 px-3 py-1 rounded-full self-start">Скоро</span>
+                    </div>
+
+                    <!-- CRM/ERP (coming soon) -->
+                    <div class="bg-white rounded-2xl p-6 border border-dashed border-gray-200 flex flex-col opacity-60 select-none">
+                        <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-bold text-gray-500 mb-2">CRM и ERP системы</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed flex-1">Автоматизация бизнес-процессов</p>
+                        <span class="mt-4 text-xs text-gray-400 font-medium bg-gray-100 px-3 py-1 rounded-full self-start">Скоро</span>
+                    </div>
+
                 </div>
             </div>
 

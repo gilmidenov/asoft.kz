@@ -35,7 +35,7 @@ const deletingCover = ref(false)
 const deletingFile  = ref(false)
 
 // ── Формы ────────────────────────────────────────────────────────
-const emptyPageForm = () => ({ title: '', description: '', type: 'catalog', body: '', sort_order: 0, is_active: true })
+const emptyPageForm = () => ({ title: '', description: '', type: 'catalog', body: '', sort_order: 0, is_active: true, show_in_nav: true })
 const emptyItemForm = () => ({ title: '', content: '', body: '', file_type: 'text', sort_order: 0, is_active: true })
 const pageForm = ref(emptyPageForm())
 const itemForm = ref(emptyItemForm())
@@ -97,6 +97,7 @@ function openEditPage(page) {
         body:        page.body || '',
         sort_order:  page.sort_order || 0,
         is_active:   !!page.is_active,
+        show_in_nav: page.show_in_nav !== false,
     }
     errors.value        = {}
     coverFile.value     = null
@@ -471,7 +472,13 @@ const fileTypeLabel = { image: 'Изображение', pdf: 'PDF', text: 'Ст
                         <label class="flex items-center gap-2 text-sm cursor-pointer pb-2">
                             <input type="checkbox" v-model="pageForm.is_active" class="rounded" /> Активен
                         </label>
+                        <label class="flex items-center gap-2 text-sm cursor-pointer pb-2">
+                            <input type="checkbox" v-model="pageForm.show_in_nav" class="rounded" /> В навигации
+                        </label>
                     </div>
+                    <p class="text-xs text-muted -mt-2">
+                        «В навигации» — показывать в полосе шапки и подвала. Снимите галку для скрытых подразделов.
+                    </p>
 
                     <div v-if="errors.general" class="text-red-500 text-sm">{{ errors.general[0] }}</div>
                     <div class="flex gap-3 pt-2">

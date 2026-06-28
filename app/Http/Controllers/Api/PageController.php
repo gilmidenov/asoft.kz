@@ -16,7 +16,7 @@ class PageController extends Controller
     public function index(): JsonResponse
     {
         return response()->json(
-            Page::where('is_active', true)->orderBy('sort_order')->get()
+            Page::where('is_active', true)->where('show_in_nav', true)->orderBy('sort_order')->get()
         );
     }
 
@@ -46,6 +46,7 @@ class PageController extends Controller
             'body'        => 'nullable|string',
             'sort_order'  => 'integer|min:0',
             'is_active'   => 'boolean',
+            'show_in_nav' => 'boolean',
         ]);
 
         $data['slug'] = Str::slug($data['title']);
@@ -64,6 +65,7 @@ class PageController extends Controller
             'body'        => 'nullable|string',
             'sort_order'  => 'integer|min:0',
             'is_active'   => 'boolean',
+            'show_in_nav' => 'boolean',
         ]);
 
         if (isset($data['title'])) {
